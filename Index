@@ -1,1 +1,54 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Badminton-Selasa Dashboard</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, select, button { padding: 8px; margin: 5px 0; width: 100%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    </style>
+</head>
+<body>
 
+    <div class="card">
+        <h1>Badminton-Selasa</h1>
+        <p>Lokasi: <strong>Sport Hill Arena, Batam</strong></p>
+    </div>
+
+    <!-- Form Tambah Player -->
+    <div class="card">
+        <h3>Tambah Data Player</h3>
+        <input type="text" id="playerName" placeholder="Nama Player">
+        <select id="paymentType">
+            <option value="Flat">Flat per Bulan</option>
+            <option value="Play">Per Play</option>
+        </select>
+        <button onclick="addPlayer()">Tambah Player</button>
+    </div>
+
+    <!-- Status Iuran -->
+    <div class="card">
+        <h3>Status Iuran Anggota (Juni 2026)</h3>
+        <table id="playerTable">
+            <tr><th>Nama</th><th>Tipe</th><th>Status</th></tr>
+            <tr><td>Dr. Husni Lubis</td><td>Flat</td><td>CASH</td></tr>
+        </table>
+    </div>
+
+    <script>
+        function addPlayer() {
+            let name = document.getElementById('playerName').value;
+            let type = document.getElementById('paymentType').value;
+            let table = document.getElementById('playerTable');
+            let row = table.insertRow(-1);
+            row.insertCell(0).innerHTML = name;
+            row.insertCell(1).innerHTML = type;
+            row.insertCell(2).innerHTML = "Pending";
+        }
+    </script>
+</body>
+</html>
