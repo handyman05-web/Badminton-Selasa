@@ -273,6 +273,14 @@
           const totalUangKeluar = transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
           const saldoKas = totalUangMasuk - totalUangKeluar;
 
+          // Fungsi Share/Copy
+          const copyLink = () => {
+              navigator.clipboard.writeText(window.location.href);
+              showToast("Link workspace disalin! 📋", "success");
+          };
+
+          const waMessage = `🏸 JADWAL BADMINTON SELASA CERIA 🏸%0A%0AMari join sesi malam ini di Sport Hill Arena.%0ADaftar absensi dan update statistik di sini:%0A${encodeURIComponent(window.location.href)}%0A%0AMohon konfirmasi kehadirannya ya saudaraku! 🙏`;
+
           return (
             <div className="min-h-screen bg-gray-950 text-gray-100 font-sans antialiased pb-20">
               {notification && (
@@ -285,7 +293,11 @@
                 <div className="max-w-md mx-auto h-16 flex items-center justify-between">
                   <div>
                     <h1 className="text-base font-black text-emerald-400">Badminton Selasa Ceria</h1>
-                    <p className="text-[10px] text-gray-400">Cloud Sync Active | Hai, Admin Handi</p>
+                    <p className="text-[10px] text-gray-400">Cloud Sync Active | Admin: Handi</p>
+                  </div>
+                  <div className="flex gap-2">
+                      <button onClick={copyLink} className="bg-gray-800 p-2 rounded-xl text-[9px] font-bold text-gray-300">COPY</button>
+                      <a href={`https://wa.me/?text=${waMessage}`} target="_blank" className="bg-green-700 p-2 rounded-xl text-[9px] font-bold text-white">WA</a>
                   </div>
                 </div>
               </header>
