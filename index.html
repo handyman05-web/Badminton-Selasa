@@ -44,7 +44,7 @@
                                 onChange={(e) => setSelectedCourt(e.target.value)}
                                 className="w-full mt-2 bg-gray-950 border border-emerald-900/50 p-3 rounded-xl text-sm text-white focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer"
                             >
-                                {[...Array(10)].map((_, i) => <option key={i} value={Court ${i+1}}>Court {i+1}</option>)}
+                                {[...Array(10)].map((_, i) => <option key={i} value={`Court ${i+1}`}>Court {i+1}</option>)}
                             </select>
                         </div>
                     </header>
@@ -143,3 +143,5 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
+</body>
+</html>
