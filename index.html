@@ -2,68 +2,100 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Badminton Selasa Ceria</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
 </head>
-<body class="bg-gray-950 text-white font-sans p-4">
-    <div id="root" class="max-w-md mx-auto"></div>
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
+    <div id="root"></div>
 
     <script type="text/babel">
         const { useState } = React;
 
         function App() {
+            const [activeTab, setActiveTab] = useState('rsvp');
             const [players, setPlayers] = useState([
-                { id: 1, name: "Dr. Husni", type: "Bulanan", stats: "0/0" },
-                { id: 2, name: "Handi", type: "Bulanan", stats: "0/0" }
+                { id: 1, name: "Dr. Husni", wa: "-", type: "Bulanan", stats: "0/0" },
+                { id: 2, name: "Handi", wa: "-", type: "Bulanan", stats: "0/0" }
             ]);
             const [score, setScore] = useState({a: 0, b: 0});
-            const waLink = `https://wa.me/?text=Yuk%20cek%20Jadwal%20dan%20Skor%20malam%20ini:%20${encodeURIComponent(window.location.href)}`;
+            
+            // Link Share untuk WhatsApp
+            const shareUrl = window.location.href;
+            const waMessage = `🏸 JADWAL BADMINTON SELASA CERIA 🏸%0A%0AMari join sesi malam ini di Sport Hill Arena.%0ADaftar absensi dan update statistik di sini:%0A${encodeURIComponent(shareUrl)}%0A%0AMohon konfirmasi kehadirannya ya saudaraku! 🙏`;
 
             return (
-                <div className="space-y-6">
+                <div className="max-w-md mx-auto p-4 space-y-6">
                     <header className="flex justify-between items-center">
-                        <h1 className="text-lg font-black text-emerald-400">Badminton Selasa Ceria</h1>
-                        <a href={waLink} target="_blank" className="bg-green-600 text-[9px] font-bold px-3 py-1 rounded-lg">SHARE WA 📲</a>
+                        <div>
+                            <h1 className="text-lg font-black text-emerald-400">Badminton Selasa Ceria</h1>
+                            <p className="text-[9px] text-gray-500">Admin: Handi | Sport Hill Arena</p>
+                        </div>
+                        <a href={`https://wa.me/?text=${waMessage}`} target="_blank" className="bg-green-600 p-2 rounded-xl text-[10px] font-bold">SHARE WA 📲</a>
                     </header>
 
-                    {/* RSVP & Tambah Pemain */}
-                    <div className="bg-gray-900 p-4 rounded-2xl">
-                        <h2 className="text-xs font-bold mb-3 uppercase">Tambah Pemain / RSVP</h2>
-                        <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); setPlayers([...players, {id: Date.now(), name: e.target.name.value, type: e.target.type.value, stats: "0/0"}]); e.target.reset(); }}>
-                            <input name="name" placeholder="Nama" className="w-full bg-gray-950 p-2 text-xs rounded" required />
-                            <select name="type" className="w-full bg-gray-950 p-2 text-xs rounded"><option value="Bulanan">Bulanan</option><option value="Per Play">Per Play</option></select>
-                            <button className="w-full bg-emerald-500 py-2 text-black font-bold text-xs rounded">SIMPAN</button>
-                        </form>
-                    </div>
-
-                    {/* Skor */}
-                    <div className="grid grid-cols-2 gap-4 text-center">
-                        <div className="bg-gray-900 p-4 rounded-2xl">
-                            <div className="text-3xl font-black">{score.a}</div>
-                            <button onClick={() => setScore({...score, a: score.a + 1})} className="text-[10px] mt-2 bg-indigo-600 px-4 py-1 rounded">TIM A +</button>
-                        </div>
-                        <div className="bg-gray-900 p-4 rounded-2xl">
-                            <div className="text-3xl font-black">{score.b}</div>
-                            <button onClick={() => setScore({...score, b: score.b + 1})} className="text-[10px] mt-2 bg-red-600 px-4 py-1 rounded">TIM B +</button>
-                        </div>
-                    </div>
-
-                    {/* Daftar Pemain */}
-                    <div className="space-y-2">
-                        {players.map(p => (
-                            <div key={p.id} className="flex justify-between bg-gray-900 p-3 rounded text-xs">
-                                <span>{p.name} <span className="text-[9px] text-gray-500">({p.type})</span></span>
-                                <span className="font-mono text-emerald-400">Stat: {p.stats}</span>
-                            </div>
+                    {/* Navigasi */}
+                    <div className="grid grid-cols-4 gap-2 bg-gray-900 p-1 rounded-xl text-[9px] font-bold">
+                        {['rsvp', 'roster', 'skor', 'kas'].map(t => (
+                            <button key={t} onClick={()=>setActiveTab(t)} className={`py-2 rounded-lg capitalize ${activeTab===t ? 'bg-emerald-500 text-black' : 'text-gray-400'}`}>{t}</button>
                         ))}
                     </div>
+
+                    <main>
+                        {activeTab === 'rsvp' && (
+                            <div className="space-y-4">
+                                <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+                                    <h3 className="text-xs font-bold mb-3">➕ Tambah Pemain Baru</h3>
+                                    <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); setPlayers([...players, {id: Date.now(), name: e.target.n.value, wa: e.target.w.value, type: e.target.t.value, stats: "0/0"}]); e.target.reset(); }}>
+                                        <input name="n" placeholder="Nama Lengkap" className="w-full bg-gray-950 p-2 text-xs rounded" required />
+                                        <input name="w" placeholder="No WhatsApp" className="w-full bg-gray-950 p-2 text-xs rounded" />
+                                        <select name="t" className="w-full bg-gray-950 p-2 text-xs rounded"><option value="Bulanan">Bulanan</option><option value="Per Play">Per Play</option></select>
+                                        <button className="w-full bg-emerald-500 py-2 text-black font-bold text-xs rounded">DAFTARKAN</button>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'roster' && (
+                            <div className="space-y-2">
+                                {players.map(p => (
+                                    <div key={p.id} className="p-3 bg-gray-900 rounded-xl text-xs flex justify-between">
+                                        <span>{p.name} <span className="text-[9px] text-gray-500">({p.type})</span></span>
+                                        <span className="text-emerald-400 font-mono font-bold">M/K: {p.stats}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === 'skor' && (
+                            <div className="grid grid-cols-2 gap-4 text-center">
+                                <div className="bg-gray-900 p-4 rounded-2xl">
+                                    <div className="text-4xl font-black">{score.a}</div>
+                                    <button onClick={() => setScore({...score, a: score.a + 1})} className="text-[10px] mt-2 bg-indigo-600 px-4 py-1 rounded">TIM A +</button>
+                                </div>
+                                <div className="bg-gray-900 p-4 rounded-2xl">
+                                    <div className="text-4xl font-black">{score.b}</div>
+                                    <button onClick={() => setScore({...score, b: score.b + 1})} className="text-[10px] mt-2 bg-red-600 px-4 py-1 rounded">TIM B +</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'kas' && (
+                            <div className="bg-gray-900 p-4 rounded-2xl text-xs space-y-3">
+                                <div className="flex justify-between"><span>Saldo Kas</span><span className="text-red-400 font-bold">- Rp 110.000</span></div>
+                                <hr className="border-gray-800"/>
+                                <p className="text-[10px] text-gray-500">Log transaksi terbaru akan muncul di sini.</p>
+                            </div>
+                        )}
+                    </main>
                 </div>
             );
         }
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
