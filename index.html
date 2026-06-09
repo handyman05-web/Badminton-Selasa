@@ -26,7 +26,6 @@
         // --- KONFIGURASI DATABASE ---
         const DEFAULT_APP_ID = 'badminton-selasa-ceria';
         
-        // MASUKKAN KONFIGURASI FIREBASE ANDA DI SINI AGAR SINKRONISASI BERJALAN
         const FALLBACK_FIREBASE_CONFIG = {
           apiKey: "AIzaSyAKWV_5Y9gWh7_Mp33YeTYS-v0kGGO0K0s",
           authDomain: "gki-bs-badminton-play.firebaseapp.com",
@@ -46,7 +45,7 @@
         const auth = window.firebase.auth();
         const db = window.firebase.firestore();
 
-        // --- DATA AWAL: BADMINTON SELASA CERIA ---
+        // --- DATA AWAL ---
         const INITIAL_PLAYERS = [
           { "id": "p1", "name": "Dr. Husni Lubis", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 100000, "checks": 1, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p2", "name": "Lae Agustin Tampubolon", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 100000, "checks": 1, "stats": { "played": 0, "won": 0, "lost": 0 } },
@@ -57,9 +56,9 @@
         ];
 
         const INITIAL_TRANSACTIONS = [
-          { "id": "t1", "type": "credit", "amount": 550000, "description": "Iuran bulan Juni 2026 (Husni, Agustin, Handi, Juntak, Pakpahan, Uda)", "date": "2026-06-08", "note": "Saldo Kas Masuk" },
-          { "id": "t2", "type": "debit", "amount": 400000, "description": "Bayar sewa lapangan bulan Juni 2026", "date": "2026-06-08", "note": "Transfer" },
-          { "id": "t3", "type": "debit", "amount": 260000, "description": "Beli bola 2 tabung, merk AW", "date": "2026-06-08", "note": "CASH" }
+          { "id": "t1", "type": "credit", "category": "iuran", "amount": 550000, "description": "Iuran bulan Juni 2026 (Husni, Agustin, Handi, Juntak, Pakpahan, Uda)", "date": "2026-06-08", "note": "Manual - Kas Masuk", "hasReceipt": false },
+          { "id": "t2", "type": "debit", "category": "sewa", "amount": 400000, "description": "Bayar sewa lapangan bulan Juni 2026", "date": "2026-06-08", "note": "Slip Transfer", "hasReceipt": true },
+          { "id": "t3", "type": "debit", "category": "shuttlecock", "amount": 260000, "description": "Beli bola 2 tabung, merk AW", "date": "2026-06-08", "note": "Kuitansi Fisik", "hasReceipt": true }
         ];
 
         const INITIAL_SESSIONS = [
@@ -76,16 +75,9 @@
           }
         ];
 
-        const INITIAL_TACTICAL = [
-            { id: 'tp1', label: 'T1-A', x: 75, y: 150, color: '#3B82F6' },
-            { id: 'tp2', label: 'T1-B', x: 75, y: 250, color: '#3B82F6' },
-            { id: 'tp3', label: 'T2-A', x: 225, y: 150, color: '#EF4444' },
-            { id: 'tp4', label: 'T2-B', x: 225, y: 250, color: '#EF4444' },
-        ];
-
         const loadInitialData = () => {
             try {
-                const local = localStorage.getItem('badminton_selasa_data');
+                const local = localStorage.getItem('badminton_selasa_ceriadata');
                 if (local) return JSON.parse(local);
             } catch (e) {}
             return {
@@ -93,7 +85,6 @@
                 sessions: INITIAL_SESSIONS,
                 transactions: INITIAL_TRANSACTIONS,
                 matches: [],
-                tacticalPlayers: INITIAL_TACTICAL,
                 updatedAt: 0
             };
         };
@@ -107,36 +98,29 @@
           const [sessions, setSessions] = useState(initialData.sessions);
           const [transactions, setTransactions] = useState(initialData.transactions);
           const [matches, setMatches] = useState(initialData.matches);
-          const [tacticalPlayers, setTacticalPlayers] = useState(initialData.tacticalPlayers);
 
           const stateRef = useRef(initialData);
           const localUpdatedAt = useRef(initialData.updatedAt || 0);
 
-          // Form States
-          const [newPlayerName, setNewPlayerName] = useState('');
-          const [newPlayerWa, setNewPlayerWa] = useState('');
-          const [newPlayerRole, setNewPlayerRole] = useState('player');
-          const [newPlayerType, setNewPlayerType] = useState('monthly');
-          const [newPlayerChecks, setNewPlayerChecks] = useState(0);
-          const [guestName, setGuestName] = useState('');
-          const [guestType, setGuestType] = useState('per_play');
-          const [txType, setTxType] = useState('credit');
+          // Form States Tambah Anggota
+          const [pName, setPName] = useState('');
+          const [pRole, setPRole] = useState('player');
+          const [pWa, setPWa] = useState('');
+          const [pType, setPType] = useState('monthly');
+          const [pFee, setPFee] = useState('100000');
+
+          // Form States Tambah Transaksi Keuangan
+          const [txCategory, setTxCategory] = useState('iuran'); // iuran, sewa, shuttlecock, lainnya
+          const [txType, setTxType] = useState('credit'); // credit = masuk, debit = keluar
           const [txAmount, setTxAmount] = useState('');
           const [txDesc, setTxDesc] = useState('');
-          
-          const [dPlayer1, setDPlayer1] = useState('');
-          const [dPlayer2, setDPlayer2] = useState('');
-          const [dPlayer3, setDPlayer3] = useState('');
-          const [dPlayer4, setDPlayer4] = useState('');
+          const [txMethod, setTxMethod] = useState('manual'); // manual, upload
+          const [receiptName, setReceiptName] = useState('');
+
           const [scoreA, setScoreA] = useState(0);
           const [scoreB, setScoreB] = useState(0);
-
           const [notification, setNotification] = useState(null);
           const [workspaceUrl, setWorkspaceUrl] = useState('');
-
-          const canvasRef = useRef(null);
-          const [draggingId, setDraggingId] = useState(null);
-          
           const [user, setUser] = useState(null);
           const [cloudStatus, setCloudStatus] = useState('pending'); 
 
@@ -152,14 +136,13 @@
                 sessions: stateRef.current.sessions,
                 transactions: stateRef.current.transactions,
                 matches: stateRef.current.matches,
-                tacticalPlayers: stateRef.current.tacticalPlayers,
                 ...updatedFields,
                 updatedAt: newTimestamp
             };
 
             stateRef.current = payload;
             localUpdatedAt.current = newTimestamp;
-            localStorage.setItem('badminton_selasa_data', JSON.stringify(payload));
+            localStorage.setItem('badminton_selasa_ceriadata', JSON.stringify(payload));
 
             if (cloudStatus === 'connected' && workspaceUrl && user) {
                 db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(workspaceUrl)
@@ -194,8 +177,7 @@
                   setSessions(cloudData.sessions || INITIAL_SESSIONS);
                   setTransactions(cloudData.transactions || INITIAL_TRANSACTIONS);
                   setMatches(cloudData.matches || []);
-                  setTacticalPlayers(cloudData.tacticalPlayers || INITIAL_TACTICAL);
-                  localStorage.setItem('badminton_selasa_data', JSON.stringify(cloudData));
+                  localStorage.setItem('badminton_selasa_ceriadata', JSON.stringify(cloudData));
                 }
               } else {
                 persistData({}); 
@@ -206,6 +188,87 @@
             return () => unsubFirestore();
           }, [user]);
 
+          // Handler Tambah Anggota Baru
+          const handleAddPlayer = (e) => {
+            e.preventDefault();
+            if (!pName.trim()) {
+                showToast("Nama anggota tidak boleh kosong!", "error");
+                return;
+            }
+            const newPlayer = {
+                id: 'p_' + Date.now(),
+                name: pName.trim(),
+                whatsapp: pWa.trim() || '-',
+                role: pRole,
+                type: pType,
+                fee: parseFloat(pFee) || 0,
+                checks: 1,
+                stats: { played: 0, won: 0, lost: 0 }
+            };
+            const updatedPlayers = [...players, newPlayer];
+            setPlayers(updatedPlayers);
+            stateRef.current.players = updatedPlayers;
+            
+            // Reset form
+            setPName(''); setPWa(''); setPRole('player');
+            persistData({ players: updatedPlayers });
+            showToast("Anggota Baru Berhasil Terdaftar! 👥", "success");
+          };
+
+          // Handler Tambah Transaksi Keuangan Komprehensif
+          const handleAddTransaction = (e) => {
+            e.preventDefault();
+            const parsedAmount = parseFloat(txAmount);
+            if (isNaN(parsedAmount) || parsedAmount <= 0) {
+                showToast("Jumlah nominal transaksi tidak valid!", "error");
+                return;
+            }
+
+            let type = txType;
+            let finalDesc = txDesc.trim();
+
+            // Set otomatis tipe & deskripsi default berdasarkan kategori pilihan
+            if (txCategory === 'iuran') {
+                type = 'credit';
+                if (!finalDesc) finalDesc = "Pemasukan Kas: Iuran Bulanan / Per Play Anggota";
+            } else if (txCategory === 'sewa') {
+                type = 'debit';
+                if (!finalDesc) finalDesc = "Pengeluaran Kas: Biaya Sewa Court Lapangan";
+            } else if (txCategory === 'shuttlecock') {
+                type = 'debit';
+                if (!finalDesc) finalDesc = "Pengeluaran Kas: Pembelian Bola Shuttlecock";
+            } else {
+                if (!finalDesc) finalDesc = "Transaksi Lain-lain";
+            }
+
+            const newTx = {
+                id: 't_' + Date.now(),
+                type: type,
+                category: txCategory,
+                amount: parsedAmount,
+                description: finalDesc,
+                date: new Date().toISOString().slice(0, 10),
+                note: txMethod === 'upload' ? (receiptName || "File Bukti Unggah") : "Input Manual",
+                hasReceipt: txMethod === 'upload'
+            };
+
+            const updatedTransactions = [newTx, ...transactions];
+            setTransactions(updatedTransactions);
+            stateRef.current.transactions = updatedTransactions;
+
+            // Reset form keuangan
+            setTxAmount(''); setTxDesc(''); setReceiptName(''); setTxMethod('manual');
+            persistData({ transactions: updatedTransactions });
+            showToast("Data Transaksi Berhasil Disimpan! 💰", "success");
+          };
+
+          const handleFileChange = (e) => {
+            if (e.target.files && e.target.files[0]) {
+                setReceiptName(e.target.files[0].name);
+                showToast(`File "${e.target.files[0].name}" siap diunggah! 📄`, "info");
+            }
+          };
+
           const copyWorkspaceLink = () => {
             let activeRoomId = workspaceUrl;
             if (!activeRoomId || activeRoomId === 'DEFAULT_ROOM') {
@@ -215,7 +278,8 @@
               window.history.replaceState({ path: newUrl }, '', newUrl);
             }
             const shareUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + `?workspace=${activeRoomId}`;
-            copyTextToClipboard(shareUrl);
+            const el = document.createElement("textarea"); el.value = shareUrl; el.style.position = "fixed"; document.body.appendChild(el);
+            el.focus(); el.select(); document.execCommand('copy'); document.body.removeChild(el);
             showToast(`Tautan Room berhasil disalin! 📲`, "success");
             persistData({});
           };
@@ -230,40 +294,6 @@
             persistData({ sessions: updated });
           };
 
-          const addTransaction = (e) => {
-            e.preventDefault();
-            const parsedAmount = parseFloat(txAmount);
-            if (isNaN(parsedAmount) || parsedAmount <= 0 || !txDesc.trim()) return;
-            
-            const newTx = {
-              id: 't_' + Date.now(), type: txType, amount: parsedAmount, description: txDesc,
-              date: new Date().toISOString().slice(0,10)
-            };
-            const updatedTransactions = [newTx, ...transactions];
-            setTransactions(updatedTransactions);
-            setTxAmount(''); setTxDesc('');
-            showToast("Transaksi Tercatat! 💰", "success");
-            persistData({ transactions: updatedTransactions });
-          };
-
-          const copyTextToClipboard = (text) => {
-            const el = document.createElement("textarea"); el.value = text; el.style.position = "fixed"; document.body.appendChild(el);
-            el.focus(); el.select(); document.execCommand('copy'); document.body.removeChild(el);
-          };
-
-          // Canvas logic for Tactical Board
-          useEffect(() => { if (activeTab === 'tactical') redrawCanvas(); }, [activeTab, tacticalPlayers]);
-          const redrawCanvas = () => {
-            const cv = canvasRef.current; if (!cv) return;
-            const ctx = cv.getContext('2d'); ctx.fillStyle = '#065F46'; ctx.fillRect(0, 0, cv.width, cv.height);
-            ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 3; ctx.strokeRect(15, 15, cv.width - 30, cv.height - 30);
-            ctx.beginPath(); ctx.moveTo(15, cv.height / 2); ctx.lineTo(cv.width - 15, cv.height / 2); ctx.stroke();
-            tacticalPlayers.forEach(p => {
-              ctx.beginPath(); ctx.arc(p.x, p.y, 16, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill(); ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
-              ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.label, p.x, p.y);
-            });
-          };
-
           return (
             <div className="min-h-screen bg-gray-950 text-gray-100 font-sans antialiased pb-20">
               {notification && (
@@ -274,28 +304,28 @@
               )}
 
               <header className="border-b border-gray-800 bg-gray-900/60 backdrop-blur-xl sticky top-0 z-40 px-4">
-                <div className="max-w-7xl mx-auto h-16 flex items-center justify-between">
+                <div className="max-w-md mx-auto h-16 flex items-center justify-between">
                   <div>
-                    <h1 className="text-lg font-bold text-emerald-400">Badminton Selasa Ceria</h1>
-                    <p className="text-xs text-gray-400">Cloud Sync & Ledger</p>
+                    <h1 className="text-base font-black text-emerald-400">Badminton Selasa Ceria</h1>
+                    <p className="text-[10px] text-gray-400">Cloud Engine Active</p>
                   </div>
-                  <button onClick={copyWorkspaceLink} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all">
+                  <button onClick={copyWorkspaceLink} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold rounded-xl transition-all">
                     Share Link 🔗
                   </button>
                 </div>
               </header>
 
-              {/* LOCATION & COURT SELECTOR */}
-              <section className="max-w-7xl mx-auto px-4 mt-6">
-                 <div className="bg-gray-900 border border-gray-800 p-6 rounded-3xl shadow-xl">
-                    <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-2">📍 Lokasi Kegiatan Skuad</h3>
-                    <p className="text-xl font-black text-white">Sport Hill Arena, Batam</p>
-                    <div className="mt-4">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase block mb-2">Pilih Lapangan (Sesi Ini):</label>
+              {/* LOKASI UTAMA */}
+              <section className="max-w-md mx-auto px-4 mt-4">
+                 <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
+                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">📍 Arena Utama</span>
+                    <p className="text-base font-black text-white">Sport Hill Arena, Batam</p>
+                    <div className="mt-3">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Nomor Lapangan (Sesi Aktif):</label>
                         <select 
                             value={selectedCourt} 
                             onChange={(e) => setSelectedCourt(e.target.value)} 
-                            className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none"
+                            className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                         >
                             {[...Array(10)].map((_, i) => (
                                 <option key={i} value={`Court ${i + 1}`}>Court {i + 1}</option>
@@ -305,49 +335,56 @@
                  </div>
               </section>
 
-              {/* STATS WIDGET */}
-              <section className="max-w-7xl mx-auto px-4 mt-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-gray-900/40 border border-gray-800 p-4 rounded-2xl"><span className="text-xs text-gray-400 block mb-1">Saldo Akhir</span><span className={`text-xl font-black ${saldoKas < 0 ? 'text-red-500' : 'text-emerald-400'}`}>Rp {saldoKas.toLocaleString('id-ID')}</span></div>
-                  <div className="bg-gray-900/40 border border-gray-800 p-4 rounded-2xl"><span className="text-xs text-gray-400 block mb-1">Total Pemasukan</span><span className="text-xl font-black text-gray-200">Rp {totalUangMasuk.toLocaleString('id-ID')}</span></div>
-                  <div className="bg-gray-900/40 border border-gray-800 p-4 rounded-2xl"><span className="text-xs text-gray-400 block mb-1">Total Pengeluaran</span><span className="text-xl font-black text-red-400">Rp {totalUangKeluar.toLocaleString('id-ID')}</span></div>
-                  <div className="bg-gray-900/40 border border-gray-800 p-4 rounded-2xl"><span className="text-xs text-gray-400 block mb-1">Total Roster</span><span className="text-xl font-black text-teal-400">{players.length} Pemain</span></div>
+              {/* REKAP KAS MINI */}
+              <section className="max-w-md mx-auto px-4 mt-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-900/50 border border-gray-800 p-3 rounded-2xl">
+                    <span className="text-[10px] text-gray-400 block mb-0.5">Sisa Saldo Kas</span>
+                    <span className={`text-base font-black ${saldoKas < 0 ? 'text-red-400' : 'text-emerald-400'}`}>Rp {saldoKas.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="bg-gray-900/50 border border-gray-800 p-3 rounded-2xl">
+                    <span className="text-[10px] text-gray-400 block mb-0.5">Total Skuad</span>
+                    <span className="text-base font-black text-indigo-400">{players.length} Anggota</span>
+                  </div>
                 </div>
               </section>
 
-              {/* TABS */}
-              <nav className="max-w-7xl mx-auto px-4 my-6">
-                <div className="bg-gray-900 p-1.5 rounded-2xl flex flex-wrap gap-1">
-                  <button onClick={() => setActiveTab('dashboard')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'dashboard' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400 hover:text-white'}`}>🗓️ RSVP</button>
-                  <button onClick={() => setActiveTab('players')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'players' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400 hover:text-white'}`}>👥 Anggota</button>
-                  <button onClick={() => setActiveTab('matchmaker')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'matchmaker' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400 hover:text-white'}`}>🔥 Tanding</button>
-                  <button onClick={() => setActiveTab('ledger')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'ledger' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400 hover:text-white'}`}>💰 Kas</button>
-                  <button onClick={() => setActiveTab('tactical')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'tactical' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>📋 Taktik</button>
+              {/* NAVIGASI MENU UTAMA */}
+              <nav className="max-w-md mx-auto px-4 my-4">
+                <div className="bg-gray-900 p-1 rounded-2xl flex gap-1">
+                  <button onClick={() => setActiveTab('dashboard')} className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition ${activeTab === 'dashboard' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>🗓️ RSVP</button>
+                  <button onClick={() => setActiveTab('players')} className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition ${activeTab === 'players' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>👥 Anggota</button>
+                  <button onClick={() => setActiveTab('ledger')} className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition ${activeTab === 'ledger' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>💰 Keuangan</button>
+                  <button onClick={() => setActiveTab('matchmaker')} className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition ${activeTab === 'matchmaker' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>🔥 Skor</button>
                 </div>
               </nav>
 
-              <main className="max-w-7xl mx-auto px-4">
-                {/* DASHBOARD / RSVP */}
+              <main className="max-w-md mx-auto px-4">
+                
+                {/* TAB RSVP / JADWAL */}
                 {activeTab === 'dashboard' && (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {sessions.map(s => (
-                      <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl space-y-6">
-                        <div className="border-b border-gray-800 pb-4 mb-4">
-                          <span className="text-xs font-bold text-emerald-400 uppercase">Jadwal Skuad</span>
-                          <h3 className="text-lg font-bold text-white">Sport Hill Arena - {selectedCourt}</h3>
+                      <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl space-y-4">
+                        <div className="border-b border-gray-800 pb-3">
+                          <h3 className="text-sm font-black text-white">Sesi Latihan Terjadwal</h3>
                           <p className="text-xs text-gray-400">{s.day}, {s.date} | {s.time} WIB</p>
+                          <p className="text-xs text-emerald-400 font-bold mt-1">📌 {selectedCourt} @ Sport Hill Arena</p>
                         </div>
-                        <div className="space-y-2 border-t border-gray-800/60 pt-4">
-                          <h4 className="text-xs font-bold uppercase text-gray-400 mb-2">Konfirmasi Kehadiran:</h4>
+                        <div className="space-y-2 pt-2">
+                          <h4 className="text-[10px] font-bold uppercase text-gray-500 mb-2">Konfirmasi Kehadiran Pemain:</h4>
                           {players.map(p => {
                             const status = s.rsvps?.[p.id] || 'NO_RESPONSE';
                             return (
-                              <div key={p.id} className="flex justify-between items-center p-2.5 bg-gray-950/40 rounded-xl">
-                                <span className="text-sm font-bold text-white">{p.name}</span>
+                              <div key={p.id} className="flex justify-between items-center p-2 bg-gray-950/40 rounded-xl border border-gray-900">
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-bold text-white">{p.name}</span>
+                                    <span className="text-[9px] text-gray-500">WA: {p.whatsapp}</span>
+                                </div>
                                 <div className="flex gap-1">
-                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'YES')} className={`px-2.5 py-1.5 text-xs font-bold rounded-lg ${status === 'YES' ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ikut</button>
-                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'MAYBE')} className={`px-2.5 py-1.5 text-xs font-bold rounded-lg ${status === 'MAYBE' ? 'bg-yellow-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ragu</button>
-                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'NO')} className={`px-2.5 py-1.5 text-xs font-bold rounded-lg ${status === 'NO' ? 'bg-red-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Absen</button>
+                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'YES')} className={`px-2 py-1 text-[10px] font-bold rounded-lg transition-all ${status === 'YES' ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ikut</button>
+                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'MAYBE')} className={`px-2 py-1 text-[10px] font-bold rounded-lg transition-all ${status === 'MAYBE' ? 'bg-yellow-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ragu</button>
+                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'NO')} className={`px-2 py-1 text-[10px] font-bold rounded-lg transition-all ${status === 'NO' ? 'bg-red-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Absen</button>
                                 </div>
                               </div>
                             );
@@ -358,99 +395,214 @@
                   </div>
                 )}
 
-                {/* PLAYERS */}
+                {/* TAB DATA ANGGOTA + FORM TAMBAH ANGGOTA BARU */}
                 {activeTab === 'players' && (
-                  <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl">
-                    <h3 className="text-base font-black text-white mb-4">Roster Skuad Badminton Selasa Ceria</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead>
-                          <tr className="bg-gray-950 text-gray-400">
-                            <th className="p-4 rounded-l-xl">Nama Lengkap</th>
-                            <th className="p-4 text-center">Hak Akses</th>
-                            <th className="p-4">Tipe Iuran</th>
-                            <th className="p-4">Tarif Kas</th>
-                            <th className="p-4 rounded-r-xl">Stats (M/K)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-800/60">
-                          {players.map(p => (
-                            <tr key={p.id} className="hover:bg-gray-900/40">
-                              <td className="p-4 font-bold text-white">{p.name}</td>
-                              <td className="p-4 text-center"><span className="bg-gray-800 px-2 py-1 rounded text-[10px] uppercase">{p.role}</span></td>
-                              <td className="p-4 text-gray-400">{p.type === 'monthly' ? 'Bulanan' : 'Per Main'}</td>
-                              <td className="p-4 text-emerald-400 font-bold">Rp {p.fee.toLocaleString('id-ID')}</td>
-                              <td className="p-4 text-indigo-400 font-mono">{p.stats.won} / {p.stats.lost}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  <div className="space-y-4">
+                    {/* Opsi Form Tambah Anggota Baru */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl">
+                        <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">➕ Tambah Anggota Baru</h3>
+                        <form onSubmit={handleAddPlayer} className="space-y-3">
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 block mb-1">Nama Lengkap Anggota:</label>
+                                <input 
+                                    type="text" 
+                                    value={pName} 
+                                    onChange={(e) => setPName(e.target.value)}
+                                    placeholder="Contoh: Lae Marbun" 
+                                    className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 block mb-1">Nomor WhatsApp:</label>
+                                    <input 
+                                        type="text" 
+                                        value={pWa} 
+                                        onChange={(e) => setPWa(e.target.value)}
+                                        placeholder="Contoh: 0812xxxx" 
+                                        className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 block mb-1">Role Pemain:</label>
+                                    <select 
+                                        value={pRole} 
+                                        onChange={(e) => setPRole(e.target.value)}
+                                        className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                                    >
+                                        <option value="player">Player (Anggota Biasa)</option>
+                                        <option value="admin">Admin (Pengurus)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 block mb-1">Tipe Iuran:</label>
+                                    <select 
+                                        value={pType} 
+                                        onChange={(e) => setPType(e.target.value)}
+                                        className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                                    >
+                                        <option value="monthly">Bulanan (Flat)</option>
+                                        <option value="per_play">Per Main (Harian)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 block mb-1">Nominal Iuran (Rp):</label>
+                                    <input 
+                                        type="number" 
+                                        value={pFee} 
+                                        onChange={(e) => setPFee(e.target.value)}
+                                        className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                                    />
+                                </div>
+                            </div>
+                            <button type="submit" className="w-full py-2 bg-emerald-500 text-gray-950 text-xs font-black rounded-xl hover:bg-emerald-400 transition-all shadow-lg">
+                                Simpan Anggota Baru 💾
+                            </button>
+                        </form>
+                    </div>
+
+                    {/* Tabel Roster */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl p-4 shadow-xl">
+                      <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">👥 Roster Badminton Selasa Ceria</h3>
+                      <div className="space-y-2">
+                        {players.map(p => (
+                          <div key={p.id} className="p-3 bg-gray-950/60 rounded-xl border border-gray-800 flex justify-between items-center">
+                            <div>
+                                <p className="text-xs font-black text-white">{p.name}</p>
+                                <p className="text-[9px] text-gray-400 uppercase tracking-tight">Role: {p.role} | WA: {p.whatsapp}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs font-bold text-emerald-400">Rp {p.fee.toLocaleString('id-ID')}</p>
+                                <p className="text-[9px] text-gray-500">{p.type === 'monthly' ? 'Bulanan' : 'Per Main'}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* LEDGER */}
+                {/* TAB KEUANGAN + FORM TRANSAKSI KOMPREHENSIF */}
                 {activeTab === 'ledger' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-gray-900 border border-gray-800 p-6 rounded-3xl shadow-xl">
-                      <h3 className="text-base font-bold text-white mb-4">Catat Mutasi Kas Baru</h3>
-                      <form onSubmit={addTransaction} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-2">
-                          <button type="button" onClick={() => setTxType('credit')} className={`py-1.5 rounded-lg text-xs font-bold border ${txType === 'credit' ? 'border-emerald-500 text-emerald-400 bg-emerald-950/20' : 'border-gray-800 text-gray-400'}`}>Uang Masuk</button>
-                          <button type="button" onClick={() => setTxType('debit')} className={`py-1.5 rounded-lg text-xs font-bold border ${txType === 'debit' ? 'border-red-500 text-red-400 bg-red-950/20' : 'border-gray-800 text-gray-400'}`}>Uang Keluar</button>
+                  <div className="space-y-4">
+                    {/* Opsi Form Tambah Transaksi */}
+                    <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
+                      <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">➕ Tambah Mutasi Keuangan</h3>
+                      <form onSubmit={handleAddTransaction} className="space-y-3">
+                        
+                        {/* Dropdown Pilihan Kategori */}
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-400 block mb-1">Pilih Kategori Transaksi:</label>
+                          <select 
+                            value={txCategory} 
+                            onChange={(e) => {
+                                setTxCategory(e.target.value);
+                                if (e.target.value === 'iuran') setTxType('credit');
+                                else if (e.target.value === 'sewa' || e.target.value === 'shuttlecock') setTxType('debit');
+                            }}
+                            className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white focus:outline-none"
+                          >
+                            <option value="iuran">💰 Iuran Player / Masuk</option>
+                            <option value="sewa">🏢 Sewa Court / Lapangan</option>
+                            <option value="shuttlecock">🏸 Pembelian Shuttlecock (AW)</option>
+                            <option value="lainnya">📦 Lain-lain / Kustom</option>
+                          </select>
                         </div>
-                        <input type="number" value={txAmount} onChange={(e) => setTxAmount(e.target.value)} placeholder="Jumlah Rp" className="w-full bg-gray-950 border border-gray-800 p-2.5 text-xs text-white rounded-xl" />
-                        <input type="text" value={txDesc} onChange={(e) => setTxDesc(e.target.value)} placeholder="Keterangan Nota" className="w-full bg-gray-950 border border-gray-800 p-2.5 text-xs text-white rounded-xl" />
-                        <button type="submit" className="w-full py-2.5 bg-emerald-500 text-gray-950 font-bold text-xs rounded-xl hover:bg-emerald-400">Simpan Ke Buku Kas</button>
+
+                        {/* Pilihan Type Custom jika memilih Lainnya */}
+                        {txCategory === 'lainnya' && (
+                            <div className="grid grid-cols-2 gap-2">
+                              <button type="button" onClick={() => setTxType('credit')} className={`py-1.5 rounded-xl text-[11px] font-bold border ${txType === 'credit' ? 'border-emerald-500 text-emerald-400 bg-emerald-950/20' : 'border-gray-800 text-gray-400'}`}>Uang Masuk</button>
+                              <button type="button" onClick={() => setTxType('debit')} className={`py-1.5 rounded-xl text-[11px] font-bold border ${txType === 'debit' ? 'border-red-500 text-red-400 bg-red-950/20' : 'border-gray-800 text-gray-400'}`}>Uang Keluar</button>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 gap-2">
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 block mb-1">Nominal Jumlah (Rp):</label>
+                                <input type="number" value={txAmount} onChange={(e) => setTxAmount(e.target.value)} placeholder="Contoh: 100000" className="w-full bg-gray-950 border border-gray-800 p-2.5 text-xs text-white rounded-xl focus:outline-none focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 block mb-1">Keterangan / Kuitansi Deskripsi:</label>
+                                <input type="text" value={txDesc} onChange={(e) => setTxDesc(e.target.value)} placeholder="Contoh: Bayar Cash / Transfer Bank Mandiri" className="w-full bg-gray-950 border border-gray-800 p-2.5 text-xs text-white rounded-xl focus:outline-none focus:border-emerald-500" />
+                            </div>
+                        </div>
+
+                        {/* INPUT FOTO KUITANSI ATAU SLIP TRANSFER */}
+                        <div className="bg-gray-950 p-3 rounded-2xl border border-gray-800 space-y-2">
+                            <label className="text-[10px] font-bold text-gray-400 block">Metode Bukti Kuitansi / Slip Transfer:</label>
+                            <div className="flex gap-2 text-xs">
+                                <label className="flex items-center gap-1 cursor-pointer">
+                                    <input type="radio" checked={txMethod === 'manual'} onChange={() => setTxMethod('manual')} className="accent-emerald-500" /> Input Manual
+                                </label>
+                                <label className="flex items-center gap-1 cursor-pointer">
+                                    <input type="radio" checked={txMethod === 'upload'} onChange={() => setTxMethod('upload')} className="accent-emerald-500" /> Upload Foto/Slip
+                                </label>
+                            </div>
+
+                            {txMethod === 'upload' && (
+                                <div className="mt-2">
+                                    <label className="w-full flex flex-col items-center px-4 py-2 bg-gray-900 border border-dashed border-gray-700 rounded-xl cursor-pointer hover:bg-gray-800 transition-colors">
+                                        <span className="text-[11px] text-gray-400 font-bold">📷 Pilih Foto Slip / Kuitansi</span>
+                                        <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                                    </label>
+                                    {receiptName && <p className="text-[10px] text-emerald-400 text-center mt-1 font-mono">✅ {receiptName}</p>}
+                                </div>
+                            )}
+                        </div>
+
+                        <button type="submit" className="w-full py-2.5 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl hover:bg-emerald-400 transition-all shadow-lg">Simpan Nota Transaksi Kas 🏢</button>
                       </form>
                     </div>
-                    <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+
+                    {/* Daftar Log Buku Transaksi */}
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                      <h3 className="text-xs font-black text-gray-400 uppercase tracking-wider pl-1">📋 Riwayat Arus Kas Masuk & Keluar</h3>
                       {transactions.map(t => (
-                        <div key={t.id} className="p-4 bg-gray-900 border border-gray-800 rounded-xl flex justify-between items-center">
+                        <div key={t.id} className="p-3.5 bg-gray-900 border border-gray-800 rounded-2xl flex justify-between items-center shadow-md">
                           <div>
-                            <span className="text-sm font-bold text-white block">{t.description}</span>
-                            <span className="text-[10px] text-gray-400">{t.date}</span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-bold text-white block">{t.description}</span>
+                                {t.hasReceipt && <span className="bg-indigo-950 border border-indigo-700 text-indigo-400 text-[8px] font-extrabold px-1 rounded">SLIP 📄</span>}
+                            </div>
+                            <span className="text-[9px] text-gray-500 font-medium">{t.date} | Bukti: <span className="italic">{t.note}</span></span>
                           </div>
-                          <span className={`text-sm font-black ${t.type === 'credit' ? 'text-emerald-400' : 'text-red-400'}`}>Rp {t.amount.toLocaleString('id-ID')}</span>
+                          <span className={`text-xs font-black ${t.type === 'credit' ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {t.type === 'credit' ? '+' : '-'} Rp {t.amount.toLocaleString('id-ID')}
+                          </span>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* MATCHMAKER */}
+                {/* TAB LIVE SCOREBOARD */}
                 {activeTab === 'matchmaker' && (
-                  <div className="bg-gray-900 border border-gray-800 p-6 rounded-3xl shadow-xl">
-                    <h3 className="text-lg font-bold text-white mb-6">Papan Poin Live 21</h3>
+                  <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
+                    <h3 className="text-sm font-black text-white mb-4 text-center uppercase tracking-widest">🏆 Papan Poin Live Skuad 🏆</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="bg-indigo-950/40 p-4 rounded-2xl border border-indigo-900/60 text-center">
-                            <span className="text-[10px] font-bold text-indigo-400 uppercase">TIM A</span>
-                            <div className="text-5xl font-black text-white py-4">{scoreA}</div>
+                            <span className="text-[10px] font-bold text-indigo-400 tracking-wider block uppercase mb-1">TIM A</span>
+                            <div className="text-5xl font-black text-white py-3">{scoreA}</div>
                             <div className="flex gap-2">
-                                <button onClick={() => setScoreA(prev => Math.max(0, prev - 1))} className="flex-1 py-2 bg-gray-800 rounded-xl text-white">-</button>
-                                <button onClick={() => setScoreA(prev => prev + 1)} className="flex-1 py-2 bg-indigo-600 rounded-xl text-white">+</button>
+                                <button onClick={() => setScoreA(prev => Math.max(0, prev - 1))} className="flex-1 py-1.5 bg-gray-800 rounded-xl text-white text-xs font-bold">-</button>
+                                <button onClick={() => setScoreA(prev => prev + 1)} className="flex-1 py-1.5 bg-indigo-600 rounded-xl text-white text-xs font-bold">+</button>
                             </div>
                         </div>
                         <div className="bg-red-950/40 p-4 rounded-2xl border border-red-900/60 text-center">
-                            <span className="text-[10px] font-bold text-red-400 uppercase">TIM B</span>
-                            <div className="text-5xl font-black text-white py-4">{scoreB}</div>
+                            <span className="text-[10px] font-bold text-red-400 tracking-wider block uppercase mb-1">TIM B</span>
+                            <div className="text-5xl font-black text-white py-3">{scoreB}</div>
                             <div className="flex gap-2">
-                                <button onClick={() => setScoreB(prev => Math.max(0, prev - 1))} className="flex-1 py-2 bg-gray-800 rounded-xl text-white">-</button>
-                                <button onClick={() => setScoreB(prev => prev + 1)} className="flex-1 py-2 bg-red-600 rounded-xl text-white">+</button>
+                                <button onClick={() => setScoreB(prev => Math.max(0, prev - 1))} className="flex-1 py-1.5 bg-gray-800 rounded-xl text-white text-xs font-bold">-</button>
+                                <button onClick={() => setScoreB(prev => prev + 1)} className="flex-1 py-1.5 bg-red-600 rounded-xl text-white text-xs font-bold">+</button>
                             </div>
                         </div>
                     </div>
-                  </div>
-                )}
-
-                {/* TACTICAL */}
-                {activeTab === 'tactical' && (
-                  <div className="flex flex-col lg:flex-row gap-6 bg-gray-900 border border-gray-800 p-6 rounded-3xl shadow-xl items-center justify-center">
-                    <div className="w-full lg:w-1/3 space-y-2">
-                      <h3 className="text-base font-bold text-white">Strategi Court Planner</h3>
-                      <p className="text-xs text-gray-400">Geser titik pemain untuk menyusun posisi tim.</p>
-                    </div>
-                    <canvas ref={canvasRef} width="300" height="400" className="border border-gray-800 rounded-2xl bg-emerald-950 shadow-2xl" />
+                    <button onClick={() => { setScoreA(0); setScoreB(0); showToast("Poin direset ke nol! 🔄", "info"); }} className="w-full mt-4 py-2 bg-gray-800 text-gray-400 font-bold text-xs rounded-xl hover:text-white transition-all">
+                        Reset Papan Skor 🔄
+                    </button>
                   </div>
                 )}
               </main>
