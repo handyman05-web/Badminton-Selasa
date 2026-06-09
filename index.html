@@ -4,96 +4,582 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Badminton Selasa Ceria</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
+<body class="bg-gray-950 text-gray-100 font-sans antialiased min-h-screen selection:bg-emerald-500 selection:text-gray-950">
+
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect, useRef } = React;
+
+        const DEFAULT_APP_ID = 'badminton-selasa-ceria';
+        
+        const FALLBACK_FIREBASE_CONFIG = {
+          apiKey: "AIzaSyAKWV_5Y9gWh7_Mp33YeTYS-v0kGGO0K0s",
+          authDomain: "gki-bs-badminton-play.firebaseapp.com",
+          projectId: "gki-bs-badminton-play",
+          storageBucket: "gki-bs-badminton-play.firebasestorage.app",
+          messagingSenderId: "496261059958",
+          appId: "1:496261059958:web:8b58e42f05dbc24fd3d657",
+          measurementId: "G-VFEJCT46PF"
+        };
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : FALLBACK_FIREBASE_CONFIG;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : DEFAULT_APP_ID;
+
+        if (!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
+        const auth = window.firebase.auth();
+        const db = window.firebase.firestore();
+
+        // --- DATA AWAL ---
+        const INITIAL_PLAYERS = [
+          { "id": "p1", "name": "Dr. Husni Lubis", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p2", "name": "Lae Agustin Tampubolon", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p3", "name": "Lae Handi", "whatsapp": "-", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p4", "name": "Lae Juntak", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p5", "name": "Lae Pakpahan", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p6", "name": "Uda", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } }
+        ];
+
+        const INITIAL_TRANSACTIONS = [
+          { "id": "t1", "type": "credit", "category": "iuran", "amount": 550000, "description": "Iuran bulan Juni 2026", "date": "2026-06-08", "note": "Manual - Kas Masuk", "hasReceipt": false },
+          { "id": "t2", "type": "debit", "category": "sewa", "amount": 400000, "description": "Bayar sewa lapangan bulan Juni 2026", "date": "2026-06-08", "note": "Slip Transfer", "hasReceipt": true },
+          { "id": "t3", "type": "debit", "category": "shuttlecock", "amount": 260000, "description": "Beli bola 2 tabung, merk AW", "date": "2026-06-08", "note": "Kuitansi Fisik", "hasReceipt": true }
+        ];
+
+        const INITIAL_SESSIONS = [
+          { "id": "s1", "date": "2026-06-09", "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "time": "19:00 - 21:00", "isClosed": false, "rsvps": {} }
+        ];
+
+        const INITIAL_TACTICAL = [
+            { id: 'tp1', label: 'T1-A', x: 75, y: 150, color: '#3B82F6' },
+            { id: 'tp2', label: 'T1-B', x: 75, y: 250, color: '#3B82F6' },
+            { id: 'tp3', label: 'T2-A', x: 225, y: 150, color: '#EF4444' },
+            { id: 'tp4', label: 'T2-B', x: 225, y: 250, color: '#EF4444' },
+        ];
+
+        const loadInitialData = () => {
+            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v4'); if (local) return JSON.parse(local); } catch (e) {}
+            return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS, transactions: INITIAL_TRANSACTIONS, matches: [], tacticalPlayers: INITIAL_TACTICAL, updatedAt: 0 };
+        };
 
         function App() {
-            const [activeTab, setActiveTab] = useState('rsvp');
-            const [players, setPlayers] = useState([
-                { id: 1, name: "Dr. Husni", wa: "-", type: "Bulanan", stats: "0/0" },
-                { id: 2, name: "Handi", wa: "-", type: "Bulanan", stats: "0/0" }
-            ]);
-            const [score, setScore] = useState({a: 0, b: 0});
+          const [activeTab, setActiveTab] = useState('dashboard');
+          const [selectedCourt, setSelectedCourt] = useState('Court 10');
+          
+          const initialData = loadInitialData();
+          const [players, setPlayers] = useState(initialData.players);
+          const [sessions, setSessions] = useState(initialData.sessions);
+          const [transactions, setTransactions] = useState(initialData.transactions);
+          const [matches, setMatches] = useState(initialData.matches || []);
+          const [tacticalPlayers, setTacticalPlayers] = useState(initialData.tacticalPlayers || INITIAL_TACTICAL);
+
+          const stateRef = useRef(initialData);
+          const localUpdatedAt = useRef(initialData.updatedAt || 0);
+          const canvasRef = useRef(null);
+
+          // State Anggota
+          const [pName, setPName] = useState(''); const [pRole, setPRole] = useState('player'); const [pWa, setPWa] = useState('');
+          const [pType, setPType] = useState('monthly'); const [pFee, setPFee] = useState('100000');
+
+          // State Kas
+          const [txCategory, setTxCategory] = useState('iuran'); const [txType, setTxType] = useState('credit');
+          const [txAmount, setTxAmount] = useState(''); const [txDesc, setTxDesc] = useState('');
+          const [txMethod, setTxMethod] = useState('manual'); const [receiptName, setReceiptName] = useState('');
+
+          // State Scoreboard
+          const [teamA, setTeamA] = useState(['', '']);
+          const [teamB, setTeamB] = useState(['', '']);
+          const [sets, setSets] = useState([{a:0, b:0}, {a:0, b:0}, {a:0, b:0}]);
+
+          const [notification, setNotification] = useState(null);
+          const [workspaceUrl, setWorkspaceUrl] = useState('');
+          const [user, setUser] = useState(null);
+          const [cloudStatus, setCloudStatus] = useState('pending'); 
+
+          const showToast = (message, type = 'info') => {
+            setNotification({ message, type });
+            setTimeout(() => setNotification(null), 3500);
+          };
+
+          const persistData = (updatedFields) => {
+            const newTimestamp = Date.now();
+            const payload = { 
+                players: stateRef.current.players, sessions: stateRef.current.sessions, 
+                transactions: stateRef.current.transactions, matches: stateRef.current.matches, 
+                tacticalPlayers: stateRef.current.tacticalPlayers, ...updatedFields, updatedAt: newTimestamp 
+            };
+            stateRef.current = payload; localUpdatedAt.current = newTimestamp;
+            localStorage.setItem('badminton_selasa_ceriadata_v4', JSON.stringify(payload));
+
+            if (cloudStatus === 'connected' && workspaceUrl && user) {
+                db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(workspaceUrl).set(payload).catch(err => console.error(err));
+            }
+          };
+
+          useEffect(() => {
+            auth.signInAnonymously().catch(() => setCloudStatus('error_firestore'));
+            const unsubAuth = auth.onAuthStateChanged(currentUser => { if (currentUser) setUser(currentUser); });
+            return () => unsubAuth();
+          }, []);
+
+          useEffect(() => {
+            if (!user) return;
+            const params = new URLSearchParams(window.location.search);
+            const activeRoomId = params.get('workspace') || 'DEFAULT_ROOM';
+            setWorkspaceUrl(activeRoomId);
+            const roomRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(activeRoomId);
             
-            // Link Share untuk WhatsApp
-            const shareUrl = window.location.href;
-            const waMessage = `🏸 JADWAL BADMINTON SELASA CERIA 🏸%0A%0AMari join sesi malam ini di Sport Hill Arena.%0ADaftar absensi dan update statistik di sini:%0A${encodeURIComponent(shareUrl)}%0A%0AMohon konfirmasi kehadirannya ya saudaraku! 🙏`;
+            const unsubFirestore = roomRef.onSnapshot(doc => {
+              if (doc.exists) {
+                const cloudData = doc.data();
+                if (cloudData.updatedAt > localUpdatedAt.current) {
+                  localUpdatedAt.current = cloudData.updatedAt; stateRef.current = cloudData;
+                  setPlayers(cloudData.players || INITIAL_PLAYERS); setSessions(cloudData.sessions || INITIAL_SESSIONS); 
+                  setTransactions(cloudData.transactions || INITIAL_TRANSACTIONS); setMatches(cloudData.matches || []);
+                  setTacticalPlayers(cloudData.tacticalPlayers || INITIAL_TACTICAL);
+                  localStorage.setItem('badminton_selasa_ceriadata_v4', JSON.stringify(cloudData));
+                }
+              } else { persistData({}); }
+              setCloudStatus('connected');
+            }, () => setCloudStatus('error_firestore'));
+            return () => unsubFirestore();
+          }, [user]);
 
-            return (
-                <div className="max-w-md mx-auto p-4 space-y-6">
-                    <header className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-lg font-black text-emerald-400">Badminton Selasa Ceria</h1>
-                            <p className="text-[9px] text-gray-500">Admin: Handi | Sport Hill Arena</p>
+          // Taktikal Board
+          useEffect(() => { if (activeTab === 'tactical') redrawCanvas(); }, [activeTab, tacticalPlayers]);
+          const redrawCanvas = () => {
+            const cv = canvasRef.current; if (!cv) return;
+            const ctx = cv.getContext('2d'); ctx.fillStyle = '#065F46'; ctx.fillRect(0, 0, cv.width, cv.height);
+            ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 3; ctx.strokeRect(15, 15, cv.width - 30, cv.height - 30);
+            ctx.beginPath(); ctx.moveTo(15, cv.height / 2); ctx.lineTo(cv.width - 15, cv.height / 2); ctx.stroke();
+            tacticalPlayers.forEach(p => {
+              ctx.beginPath(); ctx.arc(p.x, p.y, 16, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill(); ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+              ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.label, p.x, p.y);
+            });
+          };
+
+          // Handler Kehadiran & Sesi
+          const handleRsvpChange = (sessionId, playerId, status) => {
+            const session = sessions.find(s => s.id === sessionId);
+            if (session && session.isClosed) { showToast("Sesi sudah ditutup, absensi final telah direkam!", "error"); return; }
+            const updated = sessions.map(s => s.id === sessionId ? { ...s, rsvps: { ...s.rsvps, [playerId]: status } } : s);
+            setSessions(updated); persistData({ sessions: updated });
+          };
+
+          const handleCloseSession = (sessionId) => {
+             const updated = sessions.map(s => s.id === sessionId ? { ...s, isClosed: true } : s);
+             setSessions(updated); persistData({ sessions: updated });
+             showToast("Sesi Ditutup! Absensi final pemain telah direkam 🔒", "success");
+          };
+
+          // Handler Tambah Anggota & Update Iuran
+          const handleAddPlayer = (e) => {
+            e.preventDefault();
+            if (!pName.trim()) { showToast("Nama anggota tidak boleh kosong!", "error"); return; }
+            const newPlayer = {
+                id: 'p_' + Date.now(), name: pName.trim(), whatsapp: pWa.trim() || '-', role: pRole, type: pType, fee: parseFloat(pFee) || 0,
+                payments: {"2026-06": false, "2026-07": false}, stats: { played: 0, won: 0, lost: 0 }
+            };
+            const updatedPlayers = [...players, newPlayer]; setPlayers(updatedPlayers);
+            setPName(''); setPWa(''); setPRole('player'); persistData({ players: updatedPlayers });
+            showToast("Anggota Baru Berhasil Terdaftar! 👥", "success");
+          };
+
+          const togglePayment = (playerId, monthKey) => {
+             const updated = players.map(p => {
+                 if (p.id === playerId) return { ...p, payments: { ...p.payments, [monthKey]: !p.payments?.[monthKey] } };
+                 return p;
+             });
+             setPlayers(updated); persistData({ players: updated });
+             showToast("Status Iuran Diperbarui! ✅", "success");
+          };
+
+          // Handler Transaksi
+          const handleAddTransaction = (e) => {
+            e.preventDefault(); const parsedAmount = parseFloat(txAmount);
+            if (isNaN(parsedAmount) || parsedAmount <= 0) { showToast("Jumlah nominal tidak valid!", "error"); return; }
+            let type = txType; let finalDesc = txDesc.trim();
+            if (txCategory === 'iuran') { type = 'credit'; if (!finalDesc) finalDesc = "Pemasukan: Iuran Anggota"; }
+            else if (txCategory === 'sewa') { type = 'debit'; if (!finalDesc) finalDesc = "Pengeluaran: Biaya Sewa Court"; }
+            else if (txCategory === 'shuttlecock') { type = 'debit'; if (!finalDesc) finalDesc = "Pengeluaran: Pembelian Shuttlecock"; }
+            else if (!finalDesc) { finalDesc = "Transaksi Lain-lain"; }
+
+            const newTx = {
+                id: 't_' + Date.now(), type, category: txCategory, amount: parsedAmount, description: finalDesc,
+                date: new Date().toISOString().slice(0, 10), note: txMethod === 'upload' ? (receiptName || "File Bukti Unggah") : "Input Manual", hasReceipt: txMethod === 'upload'
+            };
+            const updatedTransactions = [newTx, ...transactions]; setTransactions(updatedTransactions);
+            setTxAmount(''); setTxDesc(''); setReceiptName(''); setTxMethod('manual');
+            persistData({ transactions: updatedTransactions }); showToast("Data Transaksi Disimpan! 💰", "success");
+          };
+          const handleFileChange = (e) => { if (e.target.files && e.target.files[0]) { setReceiptName(e.target.files[0].name); showToast(`File disiapkan! 📄`, "info"); } };
+
+          // Handler Skor & Histori Match
+          const updateScore = (setIndex, team, delta) => {
+              const newSets = [...sets];
+              newSets[setIndex][team] = Math.max(0, newSets[setIndex][team] + delta);
+              setSets(newSets);
+          };
+
+          const handleSaveMatch = () => {
+              if (!teamA[0] || !teamB[0]) { showToast("Pilih minimal 1 pemain untuk masing-masing tim!", "error"); return; }
+              let winsA = 0; let winsB = 0;
+              sets.forEach(s => { if (s.a > s.b) winsA++; else if (s.b > s.a) winsB++; });
+              if (winsA === 0 && winsB === 0) { showToast("Skor masih kosong!", "error"); return; }
+
+              const isTeamAWinner = winsA > winsB;
+              const updatedPlayers = players.map(p => {
+                 let isPlaying = false; let isWinner = false;
+                 if (teamA.includes(p.id)) { isPlaying = true; isWinner = isTeamAWinner; }
+                 if (teamB.includes(p.id)) { isPlaying = true; isWinner = !isTeamAWinner; }
+                 if (isPlaying) {
+                     return {
+                         ...p, 
+                         stats: { 
+                             played: (p.stats?.played || 0) + 1, 
+                             won: (p.stats?.won || 0) + (isWinner ? 1 : 0), 
+                             lost: (p.stats?.lost || 0) + (!isWinner ? 1 : 0) 
+                         }
+                     };
+                 }
+                 return p;
+              });
+
+              const newMatchLog = {
+                  id: 'm_' + Date.now(), date: new Date().toLocaleString('id-ID'),
+                  teamA: teamA.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
+                  teamB: teamB.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
+                  sets: [...sets], winner: isTeamAWinner ? 'A' : (winsB > winsA ? 'B' : 'Draw')
+              };
+
+              const updatedMatches = [newMatchLog, ...matches];
+              setPlayers(updatedPlayers); setMatches(updatedMatches);
+              persistData({ players: updatedPlayers, matches: updatedMatches });
+              setSets([{a:0, b:0}, {a:0, b:0}, {a:0, b:0}]); setTeamA(['', '']); setTeamB(['', '']);
+              showToast("Match Tersimpan! Statistik diupdate 🏆", "success");
+          };
+
+          const totalUangMasuk = transactions.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0);
+          const totalUangKeluar = transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
+          const saldoKas = totalUangMasuk - totalUangKeluar;
+
+          return (
+            <div className="min-h-screen bg-gray-950 text-gray-100 font-sans antialiased pb-20">
+              {notification && (
+                <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-5 py-3 rounded-xl bg-emerald-950/90 border border-emerald-500 text-emerald-200 shadow-2xl flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> <p className="text-sm font-semibold">{notification.message}</p>
+                </div>
+              )}
+
+              <header className="border-b border-gray-800 bg-gray-900/60 backdrop-blur-xl sticky top-0 z-40 px-4">
+                <div className="max-w-md mx-auto h-16 flex items-center justify-between">
+                  <div>
+                    <h1 className="text-base font-black text-emerald-400">Badminton Selasa Ceria</h1>
+                    <p className="text-[10px] text-gray-400">Cloud Sync Active | Hai, Admin Handi</p>
+                  </div>
+                </div>
+              </header>
+
+              <nav className="max-w-md mx-auto px-4 my-4 overflow-x-auto no-scrollbar">
+                <div className="bg-gray-900 p-1 rounded-2xl flex gap-1 min-w-max">
+                  <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'dashboard' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>🗓️ Jadwal</button>
+                  <button onClick={() => setActiveTab('players')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'players' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>👥 Anggota</button>
+                  <button onClick={() => setActiveTab('matchmaker')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'matchmaker' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>🔥 Match</button>
+                  <button onClick={() => setActiveTab('ledger')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'ledger' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>💰 Kas</button>
+                  <button onClick={() => setActiveTab('tactical')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'tactical' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>📋 Taktik</button>
+                </div>
+              </nav>
+
+              <main className="max-w-md mx-auto px-4">
+                
+                {/* 1. TAB RSVP & ABSENSI FINAL */}
+                {activeTab === 'dashboard' && (
+                  <div className="space-y-4">
+                    {sessions.map(s => {
+                      const hadirCount = Object.values(s.rsvps || {}).filter(status => status === 'YES').length;
+                      const needExtraCourt = hadirCount > 6;
+                      return (
+                      <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl space-y-4 relative overflow-hidden">
+                        {s.isClosed && <div className="absolute top-4 right-4 bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg transform rotate-12">Absensi Terkunci</div>}
+                        
+                        <div className="border-b border-gray-800 pb-3">
+                          <h3 className="text-sm font-black text-white">Sesi Latihan Terjadwal</h3>
+                          <p className="text-xs text-gray-400">{s.day}, {s.date} | {s.time} WIB</p>
+                          <select value={selectedCourt} onChange={(e) => setSelectedCourt(e.target.value)} className="mt-2 bg-gray-950 border border-gray-800 rounded-xl px-2 py-1 text-xs text-emerald-400 font-bold focus:outline-none">
+                              {[...Array(10)].map((_, i) => <option key={i} value={`Court ${i + 1}`}>Court {i + 1}</option>)}
+                          </select>
                         </div>
-                        <a href={`https://wa.me/?text=${waMessage}`} target="_blank" className="bg-green-600 p-2 rounded-xl text-[10px] font-bold">SHARE WA 📲</a>
-                    </header>
+                        
+                        <div className="bg-gray-950 p-4 rounded-2xl border border-gray-800 space-y-2">
+                            <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                                <span className="text-[10px] text-gray-400 font-bold uppercase">Total Hadir:</span>
+                                <span className="text-lg font-black text-white">{hadirCount} Orang</span>
+                            </div>
+                            <div className="pt-1">
+                                {needExtraCourt ? (
+                                    <div className="p-2 bg-red-950/40 border border-red-900 rounded-lg"><p className="text-[10px] font-bold text-red-400">⚠️ Butuh lebih dari 1 lapangan (Kapasitas >6).</p></div>
+                                ) : (
+                                    <div className="p-2 bg-emerald-950/40 border border-emerald-900 rounded-lg"><p className="text-[10px] font-bold text-emerald-400">✅ 1 Lapangan Cukup (Rotasi Ideal).</p></div>
+                                )}
+                            </div>
+                        </div>
 
-                    {/* Navigasi */}
-                    <div className="grid grid-cols-4 gap-2 bg-gray-900 p-1 rounded-xl text-[9px] font-bold">
-                        {['rsvp', 'roster', 'skor', 'kas'].map(t => (
-                            <button key={t} onClick={()=>setActiveTab(t)} className={`py-2 rounded-lg capitalize ${activeTab===t ? 'bg-emerald-500 text-black' : 'text-gray-400'}`}>{t}</button>
-                        ))}
+                        <div className="space-y-2 pt-2">
+                          <h4 className="text-[10px] font-bold uppercase text-gray-500 mb-2">Kehadiran (Absensi):</h4>
+                          {players.map(p => {
+                            const status = s.rsvps?.[p.id] || 'NO_RESPONSE';
+                            return (
+                              <div key={p.id} className={`flex justify-between items-center p-2 rounded-xl border ${s.isClosed ? 'bg-gray-950/20 border-gray-900 opacity-60' : 'bg-gray-950/40 border-gray-800'}`}>
+                                <span className="text-xs font-bold text-white w-24 truncate">{p.name}</span>
+                                <div className="flex gap-1">
+                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'YES')} disabled={s.isClosed} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'YES' ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ikut</button>
+                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'MAYBE')} disabled={s.isClosed} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'MAYBE' ? 'bg-yellow-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ragu</button>
+                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'NO')} disabled={s.isClosed} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'NO' ? 'bg-red-500 text-white' : 'bg-gray-800 text-gray-400'}`}>Absen</button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        {!s.isClosed && (
+                            <button onClick={() => handleCloseSession(s.id)} className="w-full mt-4 py-3 bg-red-950/50 hover:bg-red-900 border border-red-800 text-red-400 text-xs font-black rounded-xl">
+                                🔒 Tutup Sesi & Kunci Absensi Final
+                            </button>
+                        )}
+                      </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* 2. TAB ANGGOTA, IURAN & STATISTIK */}
+                {activeTab === 'players' && (
+                  <div className="space-y-4">
+                    {/* Form Tambah Anggota */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl">
+                        <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">➕ Tambah Anggota</h3>
+                        <form onSubmit={handleAddPlayer} className="grid grid-cols-2 gap-2">
+                            <input type="text" value={pName} onChange={(e) => setPName(e.target.value)} placeholder="Nama Lengkap" className="col-span-2 w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white" />
+                            <select value={pRole} onChange={(e) => setPRole(e.target.value)} className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white">
+                                <option value="player">Player</option><option value="admin">Admin</option>
+                            </select>
+                            <select value={pType} onChange={(e) => setPType(e.target.value)} className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white">
+                                <option value="monthly">Iuran Bulanan</option><option value="per_play">Iuran Per Play</option>
+                            </select>
+                            <input type="number" value={pFee} onChange={(e) => setPFee(e.target.value)} placeholder="Nominal (Rp)" className="col-span-2 w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white" />
+                            <button type="submit" className="col-span-2 w-full py-2 bg-emerald-500 text-gray-950 text-xs font-black rounded-xl">Simpan Anggota Baru</button>
+                        </form>
                     </div>
 
-                    <main>
-                        {activeTab === 'rsvp' && (
-                            <div className="space-y-4">
-                                <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800">
-                                    <h3 className="text-xs font-bold mb-3">➕ Tambah Pemain Baru</h3>
-                                    <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); setPlayers([...players, {id: Date.now(), name: e.target.n.value, wa: e.target.w.value, type: e.target.t.value, stats: "0/0"}]); e.target.reset(); }}>
-                                        <input name="n" placeholder="Nama Lengkap" className="w-full bg-gray-950 p-2 text-xs rounded" required />
-                                        <input name="w" placeholder="No WhatsApp" className="w-full bg-gray-950 p-2 text-xs rounded" />
-                                        <select name="t" className="w-full bg-gray-950 p-2 text-xs rounded"><option value="Bulanan">Bulanan</option><option value="Per Play">Per Play</option></select>
-                                        <button className="w-full bg-emerald-500 py-2 text-black font-bold text-xs rounded">DAFTARKAN</button>
-                                    </form>
-                                </div>
-                            </div>
-                        )}
+                    {/* Tabel Iuran */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl shadow-xl overflow-hidden">
+                      <div className="p-4 border-b border-gray-800 bg-gray-900/50">
+                        <h3 className="text-xs font-black text-white uppercase tracking-wider">💰 Laporan Iuran Pemain</h3>
+                      </div>
+                      <div className="overflow-x-auto p-2">
+                          <table className="w-full text-left text-[10px]">
+                              <thead>
+                                  <tr className="text-gray-400 border-b border-gray-800">
+                                      <th className="p-2 font-bold">Nama (Tipe)</th>
+                                      <th className="p-2 font-bold text-center">Juni 2026</th>
+                                      <th className="p-2 font-bold text-center">Juli 2026</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  {players.map(p => (
+                                      <tr key={p.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                                          <td className="p-2">
+                                              <p className="font-bold text-white text-xs">{p.name}</p>
+                                              <p className="text-emerald-400">Rp {p.fee.toLocaleString('id-ID')} {p.type === 'monthly' ? '' : '(Harian)'}</p>
+                                              {p.type === 'per_play' && (
+                                                <button onClick={() => {
+                                                    setTxCategory('iuran'); setTxType('credit'); setTxAmount(p.fee); setTxDesc(`Iuran Harian - ${p.name}`); setActiveTab('ledger');
+                                                }} className="mt-1 px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 rounded text-white font-bold block">Bayar Harian +</button>
+                                              )}
+                                          </td>
+                                          <td className="p-2 text-center">
+                                              {p.type === 'monthly' ? (
+                                                  <button onClick={() => togglePayment(p.id, '2026-06')} className={`px-2 py-1 rounded text-xs font-bold ${p.payments?.["2026-06"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
+                                                      {p.payments?.["2026-06"] ? 'LUNAS ✅' : 'BELUM ❌'}
+                                                  </button>
+                                              ) : <span>-</span>}
+                                          </td>
+                                          <td className="p-2 text-center">
+                                              {p.type === 'monthly' ? (
+                                                  <button onClick={() => togglePayment(p.id, '2026-07')} className={`px-2 py-1 rounded text-xs font-bold ${p.payments?.["2026-07"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
+                                                      {p.payments?.["2026-07"] ? 'LUNAS ✅' : 'BELUM ❌'}
+                                                  </button>
+                                              ) : <span>-</span>}
+                                          </td>
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      </div>
+                    </div>
 
-                        {activeTab === 'roster' && (
+                    {/* Statistik Pemain (M/K) */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl p-4 shadow-xl">
+                      <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">📊 Statistik Pemain (Menang/Kalah)</h3>
+                      <table className="w-full text-left text-[11px]">
+                          <thead>
+                            <tr className="bg-gray-950 text-gray-400 border-b border-gray-800">
+                              <th className="p-2">Pemain</th><th className="p-2 text-center">Main</th>
+                              <th className="p-2 text-center text-emerald-400">M</th><th className="p-2 text-center text-red-400">K</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-800/60">
+                            {players.sort((a,b) => (b.stats?.won || 0) - (a.stats?.won || 0)).map(p => (
+                              <tr key={p.id}>
+                                <td className="p-2 font-bold text-white">{p.name}</td>
+                                <td className="p-2 text-center font-mono">{p.stats?.played || 0}</td>
+                                <td className="p-2 text-center font-mono text-emerald-400 font-bold">{p.stats?.won || 0}</td>
+                                <td className="p-2 text-center font-mono text-red-400">{p.stats?.lost || 0}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. TAB PAPAN SKOR & MATCH HISTORI */}
+                {activeTab === 'matchmaker' && (
+                  <div className="space-y-4">
+                    <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
+                        <h3 className="text-sm font-black text-emerald-400 mb-4 text-center uppercase tracking-widest border-b border-gray-800 pb-3">🔥 Skor Match (Best of 3)</h3>
+                        
+                        {/* Pilihan Tim */}
+                        <div className="grid grid-cols-2 gap-4 mb-4">
                             <div className="space-y-2">
-                                {players.map(p => (
-                                    <div key={p.id} className="p-3 bg-gray-900 rounded-xl text-xs flex justify-between">
-                                        <span>{p.name} <span className="text-[9px] text-gray-500">({p.type})</span></span>
-                                        <span className="text-emerald-400 font-mono font-bold">M/K: {p.stats}</span>
+                                <div className="bg-indigo-950 p-2 rounded-lg text-center"><span className="text-[10px] font-black text-indigo-400 uppercase">TIM A</span></div>
+                                <select value={teamA[0]} onChange={(e)=>setTeamA([e.target.value, teamA[1]])} className="w-full bg-gray-950 border border-gray-800 p-2 rounded-lg text-xs text-white"><option value="">Pilih Pemain 1...</option>{players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                                <select value={teamA[1]} onChange={(e)=>setTeamA([teamA[0], e.target.value])} className="w-full bg-gray-950 border border-gray-800 p-2 rounded-lg text-xs text-white"><option value="">Pilih Pemain 2...</option>{players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="bg-red-950 p-2 rounded-lg text-center"><span className="text-[10px] font-black text-red-400 uppercase">TIM B</span></div>
+                                <select value={teamB[0]} onChange={(e)=>setTeamB([e.target.value, teamB[1]])} className="w-full bg-gray-950 border border-gray-800 p-2 rounded-lg text-xs text-white"><option value="">Pilih Pemain 1...</option>{players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                                <select value={teamB[1]} onChange={(e)=>setTeamB([teamB[0], e.target.value])} className="w-full bg-gray-950 border border-gray-800 p-2 rounded-lg text-xs text-white"><option value="">Pilih Pemain 2...</option>{players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                            </div>
+                        </div>
+
+                        {/* Input Skor Per Set */}
+                        <div className="space-y-2">
+                            {[0, 1, 2].map((idx) => (
+                                <div key={idx} className="bg-gray-950 p-3 rounded-xl border border-gray-800 flex items-center justify-between">
+                                    <div className="flex flex-col items-center gap-1 w-1/3">
+                                        <div className="flex gap-1 w-full"><button onClick={()=>updateScore(idx,'a',-1)} className="flex-1 bg-gray-800 text-xs py-1">-</button><button onClick={()=>updateScore(idx,'a',1)} className="flex-1 bg-indigo-900 text-xs py-1">+</button></div>
+                                        <span className="text-xl font-black text-indigo-400">{sets[idx].a}</span>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {activeTab === 'skor' && (
-                            <div className="grid grid-cols-2 gap-4 text-center">
-                                <div className="bg-gray-900 p-4 rounded-2xl">
-                                    <div className="text-4xl font-black">{score.a}</div>
-                                    <button onClick={() => setScore({...score, a: score.a + 1})} className="text-[10px] mt-2 bg-indigo-600 px-4 py-1 rounded">TIM A +</button>
+                                    <div className="text-[10px] text-gray-500 font-black uppercase text-center w-1/3">Set {idx+1}</div>
+                                    <div className="flex flex-col items-center gap-1 w-1/3">
+                                        <div className="flex gap-1 w-full"><button onClick={()=>updateScore(idx,'b',-1)} className="flex-1 bg-gray-800 text-xs py-1">-</button><button onClick={()=>updateScore(idx,'b',1)} className="flex-1 bg-red-900 text-xs py-1">+</button></div>
+                                        <span className="text-xl font-black text-red-400">{sets[idx].b}</span>
+                                    </div>
                                 </div>
-                                <div className="bg-gray-900 p-4 rounded-2xl">
-                                    <div className="text-4xl font-black">{score.b}</div>
-                                    <button onClick={() => setScore({...score, b: score.b + 1})} className="text-[10px] mt-2 bg-red-600 px-4 py-1 rounded">TIM B +</button>
-                                </div>
-                            </div>
-                        )}
+                            ))}
+                        </div>
 
-                        {activeTab === 'kas' && (
-                            <div className="bg-gray-900 p-4 rounded-2xl text-xs space-y-3">
-                                <div className="flex justify-between"><span>Saldo Kas</span><span className="text-red-400 font-bold">- Rp 110.000</span></div>
-                                <hr className="border-gray-800"/>
-                                <p className="text-[10px] text-gray-500">Log transaksi terbaru akan muncul di sini.</p>
-                            </div>
-                        )}
-                    </main>
-                </div>
-            );
+                        <button onClick={handleSaveMatch} className="w-full mt-4 py-3 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl">💾 Simpan Hasil & Update Stats Pemain</button>
+                    </div>
+
+                    {/* Histori Pertandingan */}
+                    <div className="bg-gray-900 border border-gray-800 p-4 rounded-3xl shadow-xl">
+                        <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">📋 Histori Match</h3>
+                        <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                            {matches.length === 0 ? <p className="text-[10px] text-gray-500 text-center italic">Belum ada data match.</p> : null}
+                            {matches.map((m, i) => (
+                                <div key={m.id} className="bg-gray-950 p-3 rounded-2xl border border-gray-800">
+                                    <div className="flex justify-between text-[9px] text-gray-500 border-b border-gray-800 pb-1 mb-2"><span>Match #{matches.length - i}</span><span>{m.date}</span></div>
+                                    <div className="flex justify-between items-center">
+                                        <div className={`w-2/5 text-[10px] font-bold ${m.winner === 'A' ? 'text-indigo-400' : 'text-gray-400'}`}>{m.teamA.join(' & ')}</div>
+                                        <div className="w-1/5 text-center flex flex-col gap-0.5">
+                                            {m.sets.map((s, idx) => {
+                                                if(s.a===0 && s.b===0) return null;
+                                                return <span key={idx} className="text-[9px] bg-gray-800 px-1 rounded font-mono">{s.a} - {s.b}</span>
+                                            })}
+                                        </div>
+                                        <div className={`w-2/5 text-right text-[10px] font-bold ${m.winner === 'B' ? 'text-red-400' : 'text-gray-400'}`}>{m.teamB.join(' & ')}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. TAB KEUANGAN */}
+                {activeTab === 'ledger' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3 mb-2">
+                        <div className="bg-gray-900 p-3 rounded-2xl border border-gray-800 text-center">
+                            <span className="text-[10px] text-gray-400 uppercase tracking-widest block">Saldo Akhir</span>
+                            <span className={`text-lg font-black ${saldoKas < 0 ? 'text-red-400' : 'text-emerald-400'}`}>Rp {saldoKas.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div className="bg-gray-900 p-3 rounded-2xl border border-gray-800 text-center">
+                            <span className="text-[10px] text-gray-400 uppercase tracking-widest block">Total Pengeluaran</span>
+                            <span className="text-lg font-black text-red-400">Rp {totalUangKeluar.toLocaleString('id-ID')}</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
+                      <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">➕ Mutasi Keuangan Baru</h3>
+                      <form onSubmit={handleAddTransaction} className="space-y-3">
+                        <select value={txCategory} onChange={(e) => { setTxCategory(e.target.value); if(e.target.value==='iuran') setTxType('credit'); else if(e.target.value==='sewa'||e.target.value==='shuttlecock') setTxType('debit'); }} className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white">
+                            <option value="iuran">💰 Pemasukan (Iuran Player)</option><option value="sewa">🏢 Pengeluaran (Sewa Lapangan)</option>
+                            <option value="shuttlecock">🏸 Pengeluaran (Shuttlecock AW)</option><option value="lainnya">📦 Lainnya</option>
+                        </select>
+                        <input type="number" value={txAmount} onChange={(e) => setTxAmount(e.target.value)} placeholder="Nominal Rp" className="w-full bg-gray-950 border border-gray-800 p-2.5 text-xs text-white rounded-xl" />
+                        <input type="text" value={txDesc} onChange={(e) => setTxDesc(e.target.value)} placeholder="Keterangan Transaksi" className="w-full bg-gray-950 border border-gray-800 p-2.5 text-xs text-white rounded-xl" />
+                        <div className="bg-gray-950 p-3 rounded-2xl border border-gray-800">
+                            <label className="text-[10px] font-bold text-gray-400 block mb-2">Metode Bukti:</label>
+                            <div className="flex gap-4 text-xs"><label><input type="radio" checked={txMethod==='manual'} onChange={()=>setTxMethod('manual')} className="mr-1"/>Manual</label><label><input type="radio" checked={txMethod==='upload'} onChange={()=>setTxMethod('upload')} className="mr-1"/>Upload Slip</label></div>
+                            {txMethod === 'upload' && (<input type="file" onChange={handleFileChange} className="mt-2 text-[10px] w-full text-emerald-400" />)}
+                        </div>
+                        <button type="submit" className="w-full py-2.5 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl">Simpan Transaksi 💾</button>
+                      </form>
+                    </div>
+
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                      {transactions.map(t => (
+                        <div key={t.id} className="p-3.5 bg-gray-900 border border-gray-800 rounded-2xl flex justify-between items-center shadow-md">
+                          <div>
+                            <span className="text-xs font-bold text-white block">{t.description} {t.hasReceipt && "📄"}</span>
+                            <span className="text-[9px] text-gray-500">{t.date} | {t.note}</span>
+                          </div>
+                          <span className={`text-xs font-black ${t.type === 'credit' ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {t.type === 'credit' ? '+' : '-'} Rp {t.amount.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. TAB TAKTIKAL (KEMBALI KE VERSI SEBELUMNYA) */}
+                {activeTab === 'tactical' && (
+                  <div className="bg-gray-900 border border-gray-800 p-6 rounded-3xl shadow-xl flex flex-col items-center justify-center">
+                    <h3 className="text-sm font-bold text-white mb-2 w-full">📋 Papan Strategi Court</h3>
+                    <p className="text-[10px] text-gray-400 mb-4 w-full">Visualisasi taktik lapangan statis.</p>
+                    <canvas ref={canvasRef} width="300" height="400" className="border border-gray-800 rounded-2xl bg-emerald-950 shadow-2xl max-w-full" />
+                  </div>
+                )}
+
+              </main>
+            </div>
+          );
         }
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
