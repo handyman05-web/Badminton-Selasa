@@ -56,8 +56,10 @@
           { "id": "t3", "type": "debit", "category": "shuttlecock", "amount": 260000, "description": "Beli bola 2 tabung, merk AW", "date": "2026-06-08", "note": "Kuitansi Fisik", "hasReceipt": true }
         ];
 
+        // Format tanggal hari ini
+        const todayStr = new Date().toISOString().slice(0, 10);
         const INITIAL_SESSIONS = [
-          { "id": "s1", "date": "2026-06-09", "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "time": "19:00 - 21:00", "isClosed": false, "rsvps": {} }
+          { "id": "s1", "date": todayStr, "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "time": "19:00 - 21:00", "isClosed": false, "rsvps": {} }
         ];
 
         const INITIAL_TACTICAL = [
@@ -68,17 +70,17 @@
         ];
 
         const loadInitialData = () => {
-            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v4'); if (local) return JSON.parse(local); } catch (e) {}
-            return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS, transactions: INITIAL_TRANSACTIONS, matches: [], tacticalPlayers: INITIAL_TACTICAL, updatedAt: 0 };
+            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v5'); if (local) return JSON.parse(local); } catch (e) {}
+            return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS, sessionHistory: [], transactions: INITIAL_TRANSACTIONS, matches: [], tacticalPlayers: INITIAL_TACTICAL, updatedAt: 0 };
         };
 
         function App() {
           const [activeTab, setActiveTab] = useState('dashboard');
-          const [selectedCourt, setSelectedCourt] = useState('Court 10');
           
           const initialData = loadInitialData();
           const [players, setPlayers] = useState(initialData.players);
           const [sessions, setSessions] = useState(initialData.sessions);
+          const [sessionHistory, setSessionHistory] = useState(initialData.sessionHistory || []);
           const [transactions, setTransactions] = useState(initialData.transactions);
           const [matches, setMatches] = useState(initialData.matches || []);
           const [tacticalPlayers, setTacticalPlayers] = useState(initialData.tacticalPlayers || INITIAL_TACTICAL);
@@ -114,12 +116,12 @@
           const persistData = (updatedFields) => {
             const newTimestamp = Date.now();
             const payload = { 
-                players: stateRef.current.players, sessions: stateRef.current.sessions, 
+                players: stateRef.current.players, sessions: stateRef.current.sessions, sessionHistory: stateRef.current.sessionHistory,
                 transactions: stateRef.current.transactions, matches: stateRef.current.matches, 
                 tacticalPlayers: stateRef.current.tacticalPlayers, ...updatedFields, updatedAt: newTimestamp 
             };
             stateRef.current = payload; localUpdatedAt.current = newTimestamp;
-            localStorage.setItem('badminton_selasa_ceriadata_v4', JSON.stringify(payload));
+            localStorage.setItem('badminton_selasa_ceriadata_v5', JSON.stringify(payload));
 
             if (cloudStatus === 'connected' && workspaceUrl && user) {
                 db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(workspaceUrl).set(payload).catch(err => console.error(err));
@@ -145,9 +147,9 @@
                 if (cloudData.updatedAt > localUpdatedAt.current) {
                   localUpdatedAt.current = cloudData.updatedAt; stateRef.current = cloudData;
                   setPlayers(cloudData.players || INITIAL_PLAYERS); setSessions(cloudData.sessions || INITIAL_SESSIONS); 
-                  setTransactions(cloudData.transactions || INITIAL_TRANSACTIONS); setMatches(cloudData.matches || []);
-                  setTacticalPlayers(cloudData.tacticalPlayers || INITIAL_TACTICAL);
-                  localStorage.setItem('badminton_selasa_ceriadata_v4', JSON.stringify(cloudData));
+                  setSessionHistory(cloudData.sessionHistory || []); setTransactions(cloudData.transactions || INITIAL_TRANSACTIONS); 
+                  setMatches(cloudData.matches || []); setTacticalPlayers(cloudData.tacticalPlayers || INITIAL_TACTICAL);
+                  localStorage.setItem('badminton_selasa_ceriadata_v5', JSON.stringify(cloudData));
                 }
               } else { persistData({}); }
               setCloudStatus('connected');
@@ -171,56 +173,118 @@
           // Handler Kehadiran & Sesi
           const handleRsvpChange = (sessionId, playerId, status) => {
             const session = sessions.find(s => s.id === sessionId);
-            if (session && session.isClosed) { showToast("Sesi sudah ditutup, absensi final telah direkam!", "error"); return; }
+            if (session && session.isClosed) { showToast("Sesi sudah ditutup!", "error"); return; }
             const updated = sessions.map(s => s.id === sessionId ? { ...s, rsvps: { ...s.rsvps, [playerId]: status } } : s);
             setSessions(updated); persistData({ sessions: updated });
           };
 
-          const handleCloseSession = (sessionId) => {
-             const updated = sessions.map(s => s.id === sessionId ? { ...s, isClosed: true } : s);
-             setSessions(updated); persistData({ sessions: updated });
-             showToast("Sesi Ditutup! Absensi final pemain telah direkam 🔒", "success");
+          const updateSessionInfo = (sessionId, field, value) => {
+              const updated = sessions.map(s => s.id === sessionId ? { ...s, [field]: value } : s);
+              setSessions(updated); persistData({ sessions: updated });
           };
 
-          // Handler Tambah Anggota & Update Iuran
+          const handleCloseSession = (sessionId) => {
+             const session = sessions.find(s => s.id === sessionId);
+             if(!session) return;
+             
+             // 1. Catat ke Histori
+             const attendees = Object.keys(session.rsvps).filter(uid => session.rsvps[uid] === 'YES').map(uid => players.find(p=>p.id===uid)?.name).filter(Boolean);
+             const historyLog = { ...session, isClosed: true, attendees };
+             const newHistory = [historyLog, ...sessionHistory];
+             
+             // 2. Buat Sesi Baru (Minggu Depan)
+             let nextDateStr = "";
+             const parts = session.date.split('-');
+             if (parts.length === 3) {
+                 let d = new Date(parts[0], parts[1] - 1, parts[2]);
+                 d.setDate(d.getDate() + 7); // Tambah 7 Hari
+                 const yyyy = d.getFullYear();
+                 const mm = String(d.getMonth() + 1).padStart(2, '0');
+                 const dd = String(d.getDate()).padStart(2, '0');
+                 nextDateStr = `${yyyy}-${mm}-${dd}`;
+             } else {
+                 nextDateStr = new Date().toISOString().slice(0, 10);
+             }
+
+             const newSession = {
+                 id: 's_' + Date.now(), date: nextDateStr, day: session.day,
+                 location: session.location, court: session.court, time: session.time,
+                 isClosed: false, rsvps: {}
+             };
+
+             setSessions([newSession]);
+             setSessionHistory(newHistory);
+             persistData({ sessions: [newSession], sessionHistory: newHistory });
+             showToast("Sesi Ditutup! Histori tersimpan & Jadwal baru dibuat 🗓️", "success");
+          };
+
+          // Handler Tambah Anggota & Update Iuran Terintegrasi
           const handleAddPlayer = (e) => {
             e.preventDefault();
-            if (!pName.trim()) { showToast("Nama anggota tidak boleh kosong!", "error"); return; }
+            if (!pName.trim()) { showToast("Nama tidak boleh kosong!", "error"); return; }
             const newPlayer = {
                 id: 'p_' + Date.now(), name: pName.trim(), whatsapp: pWa.trim() || '-', role: pRole, type: pType, fee: parseFloat(pFee) || 0,
                 payments: {"2026-06": false, "2026-07": false}, stats: { played: 0, won: 0, lost: 0 }
             };
             const updatedPlayers = [...players, newPlayer]; setPlayers(updatedPlayers);
             setPName(''); setPWa(''); setPRole('player'); persistData({ players: updatedPlayers });
-            showToast("Anggota Baru Berhasil Terdaftar! 👥", "success");
+            showToast("Anggota Baru Terdaftar! 👥", "success");
           };
 
           const togglePayment = (playerId, monthKey) => {
+             const player = players.find(p => p.id === playerId);
+             const isPaid = player.payments?.[monthKey];
+             
              const updated = players.map(p => {
-                 if (p.id === playerId) return { ...p, payments: { ...p.payments, [monthKey]: !p.payments?.[monthKey] } };
+                 if (p.id === playerId) return { ...p, payments: { ...p.payments, [monthKey]: !isPaid } };
                  return p;
              });
-             setPlayers(updated); persistData({ players: updated });
-             showToast("Status Iuran Diperbarui! ✅", "success");
+             setPlayers(updated);
+             
+             // AUTO UPDATE KAS JIKA DARI BELUM -> LUNAS
+             if (!isPaid) {
+                 const newTx = {
+                    id: 't_' + Date.now(), type: 'credit', category: 'iuran', amount: player.fee, 
+                    description: `Iuran Bulanan (${monthKey}) - ${player.name}`,
+                    date: new Date().toISOString().slice(0, 10), note: "Auto-Sync Roster", hasReceipt: false
+                 };
+                 const updatedTransactions = [newTx, ...transactions];
+                 setTransactions(updatedTransactions);
+                 persistData({ players: updated, transactions: updatedTransactions });
+                 showToast(`LUNAS! Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
+             } else {
+                 persistData({ players: updated });
+                 showToast("Status diubah ke Belum Lunas. (Cek Kas Manual) ❌", "info");
+             }
           };
 
-          // Handler Transaksi
+          const payPerPlay = (playerId) => {
+             const player = players.find(p => p.id === playerId);
+             const newTx = {
+                  id: 't_' + Date.now(), type: 'credit', category: 'iuran', amount: player.fee, 
+                  description: `Iuran Harian - ${player.name}`,
+                  date: new Date().toISOString().slice(0, 10), note: "Auto-Sync Roster", hasReceipt: false
+             };
+             const updatedTransactions = [newTx, ...transactions];
+             setTransactions(updatedTransactions);
+             persistData({ transactions: updatedTransactions });
+             showToast(`Iuran Harian Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
+          };
+
+          // Handler Transaksi Manual
           const handleAddTransaction = (e) => {
             e.preventDefault(); const parsedAmount = parseFloat(txAmount);
-            if (isNaN(parsedAmount) || parsedAmount <= 0) { showToast("Jumlah nominal tidak valid!", "error"); return; }
-            let type = txType; let finalDesc = txDesc.trim();
-            if (txCategory === 'iuran') { type = 'credit'; if (!finalDesc) finalDesc = "Pemasukan: Iuran Anggota"; }
-            else if (txCategory === 'sewa') { type = 'debit'; if (!finalDesc) finalDesc = "Pengeluaran: Biaya Sewa Court"; }
-            else if (txCategory === 'shuttlecock') { type = 'debit'; if (!finalDesc) finalDesc = "Pengeluaran: Pembelian Shuttlecock"; }
-            else if (!finalDesc) { finalDesc = "Transaksi Lain-lain"; }
+            if (isNaN(parsedAmount) || parsedAmount <= 0) { showToast("Jumlah tidak valid!", "error"); return; }
+            let type = txType; let finalDesc = txDesc.trim() || (txCategory === 'iuran' ? "Pemasukan: Iuran" : "Transaksi Lainnya");
+            if (txCategory === 'sewa' || txCategory === 'shuttlecock') type = 'debit';
 
             const newTx = {
                 id: 't_' + Date.now(), type, category: txCategory, amount: parsedAmount, description: finalDesc,
-                date: new Date().toISOString().slice(0, 10), note: txMethod === 'upload' ? (receiptName || "File Bukti Unggah") : "Input Manual", hasReceipt: txMethod === 'upload'
+                date: new Date().toISOString().slice(0, 10), note: txMethod === 'upload' ? (receiptName || "Bukti Unggah") : "Input Manual", hasReceipt: txMethod === 'upload'
             };
             const updatedTransactions = [newTx, ...transactions]; setTransactions(updatedTransactions);
             setTxAmount(''); setTxDesc(''); setReceiptName(''); setTxMethod('manual');
-            persistData({ transactions: updatedTransactions }); showToast("Data Transaksi Disimpan! 💰", "success");
+            persistData({ transactions: updatedTransactions }); showToast("Data Kas Disimpan! 💰", "success");
           };
           const handleFileChange = (e) => { if (e.target.files && e.target.files[0]) { setReceiptName(e.target.files[0].name); showToast(`File disiapkan! 📄`, "info"); } };
 
@@ -232,7 +296,7 @@
           };
 
           const handleSaveMatch = () => {
-              if (!teamA[0] || !teamB[0]) { showToast("Pilih minimal 1 pemain untuk masing-masing tim!", "error"); return; }
+              if (!teamA[0] || !teamB[0]) { showToast("Pilih 1 pemain ditiap tim!", "error"); return; }
               let winsA = 0; let winsB = 0;
               sets.forEach(s => { if (s.a > s.b) winsA++; else if (s.b > s.a) winsB++; });
               if (winsA === 0 && winsB === 0) { showToast("Skor masih kosong!", "error"); return; }
@@ -243,14 +307,7 @@
                  if (teamA.includes(p.id)) { isPlaying = true; isWinner = isTeamAWinner; }
                  if (teamB.includes(p.id)) { isPlaying = true; isWinner = !isTeamAWinner; }
                  if (isPlaying) {
-                     return {
-                         ...p, 
-                         stats: { 
-                             played: (p.stats?.played || 0) + 1, 
-                             won: (p.stats?.won || 0) + (isWinner ? 1 : 0), 
-                             lost: (p.stats?.lost || 0) + (!isWinner ? 1 : 0) 
-                         }
-                     };
+                     return { ...p, stats: { played: (p.stats?.played || 0) + 1, won: (p.stats?.won || 0) + (isWinner ? 1 : 0), lost: (p.stats?.lost || 0) + (!isWinner ? 1 : 0) } };
                  }
                  return p;
               });
@@ -273,16 +330,22 @@
           const totalUangKeluar = transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
           const saldoKas = totalUangMasuk - totalUangKeluar;
 
-          // Fungsi Share/Copy
+          // Copy Link Logic
           const copyLink = () => {
               navigator.clipboard.writeText(window.location.href);
               showToast("Link workspace disalin! 📋", "success");
           };
-
-          const waMessage = `🏸 JADWAL BADMINTON SELASA CERIA 🏸%0A%0AMari join sesi malam ini di Sport Hill Arena.%0ADaftar absensi dan update statistik di sini:%0A${encodeURIComponent(window.location.href)}%0A%0AMohon konfirmasi kehadirannya ya saudaraku! 🙏`;
+          const waMessage = `🏸 JADWAL BADMINTON SELASA CERIA 🏸%0A%0AMari join sesi di Arena.%0ADaftar absensi & update statistik di sini:%0A${encodeURIComponent(window.location.href)}%0A%0AMohon konfirmasi kehadirannya ya saudaraku! 🙏`;
 
           return (
             <div className="min-h-screen bg-gray-950 text-gray-100 font-sans antialiased pb-20">
+              <datalist id="court-options">
+                  <option value="Sport Hill Arena, Batam" />
+                  <option value="Nokorn Court" />
+                  <option value="Court 10" />
+                  <option value="Court 1" />
+              </datalist>
+
               {notification && (
                 <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-5 py-3 rounded-xl bg-emerald-950/90 border border-emerald-500 text-emerald-200 shadow-2xl flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> <p className="text-sm font-semibold">{notification.message}</p>
@@ -321,15 +384,16 @@
                       const hadirCount = Object.values(s.rsvps || {}).filter(status => status === 'YES').length;
                       const needExtraCourt = hadirCount > 6;
                       return (
-                      <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl space-y-4 relative overflow-hidden">
-                        {s.isClosed && <div className="absolute top-4 right-4 bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg transform rotate-12">Absensi Terkunci</div>}
-                        
+                      <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl space-y-4">
                         <div className="border-b border-gray-800 pb-3">
-                          <h3 className="text-sm font-black text-white">Sesi Latihan Terjadwal</h3>
-                          <p className="text-xs text-gray-400">{s.day}, {s.date} | {s.time} WIB</p>
-                          <select value={selectedCourt} onChange={(e) => setSelectedCourt(e.target.value)} className="mt-2 bg-gray-950 border border-gray-800 rounded-xl px-2 py-1 text-xs text-emerald-400 font-bold focus:outline-none">
-                              {[...Array(10)].map((_, i) => <option key={i} value={`Court ${i + 1}`}>Court {i + 1}</option>)}
-                          </select>
+                          <h3 className="text-sm font-black text-white flex justify-between">
+                              Sesi Latihan 
+                              <input type="date" value={s.date} onChange={(e)=>updateSessionInfo(s.id, 'date', e.target.value)} className="bg-transparent text-emerald-400 text-xs font-bold text-right outline-none" />
+                          </h3>
+                          <div className="mt-2 space-y-1">
+                              <input type="text" value={s.location} onChange={(e)=>updateSessionInfo(s.id, 'location', e.target.value)} list="court-options" placeholder="Lokasi Arena" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-300 focus:border-emerald-500 outline-none" />
+                              <input type="text" value={s.court} onChange={(e)=>updateSessionInfo(s.id, 'court', e.target.value)} list="court-options" placeholder="Nomor Lapangan" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-xs text-emerald-400 font-bold focus:border-emerald-500 outline-none" />
+                          </div>
                         </div>
                         
                         <div className="bg-gray-950 p-4 rounded-2xl border border-gray-800 space-y-2">
@@ -351,33 +415,49 @@
                           {players.map(p => {
                             const status = s.rsvps?.[p.id] || 'NO_RESPONSE';
                             return (
-                              <div key={p.id} className={`flex justify-between items-center p-2 rounded-xl border ${s.isClosed ? 'bg-gray-950/20 border-gray-900 opacity-60' : 'bg-gray-950/40 border-gray-800'}`}>
+                              <div key={p.id} className="flex justify-between items-center p-2 rounded-xl bg-gray-950/40 border border-gray-800">
                                 <span className="text-xs font-bold text-white w-24 truncate">{p.name}</span>
                                 <div className="flex gap-1">
-                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'YES')} disabled={s.isClosed} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'YES' ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ikut</button>
-                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'MAYBE')} disabled={s.isClosed} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'MAYBE' ? 'bg-yellow-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ragu</button>
-                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'NO')} disabled={s.isClosed} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'NO' ? 'bg-red-500 text-white' : 'bg-gray-800 text-gray-400'}`}>Absen</button>
+                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'YES')} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'YES' ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ikut</button>
+                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'NO')} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'NO' ? 'bg-red-500 text-white' : 'bg-gray-800 text-gray-400'}`}>Absen</button>
                                 </div>
                               </div>
                             );
                           })}
                         </div>
                         
-                        {!s.isClosed && (
-                            <button onClick={() => handleCloseSession(s.id)} className="w-full mt-4 py-3 bg-red-950/50 hover:bg-red-900 border border-red-800 text-red-400 text-xs font-black rounded-xl">
-                                🔒 Tutup Sesi & Kunci Absensi Final
-                            </button>
-                        )}
+                        <button onClick={() => handleCloseSession(s.id)} className="w-full mt-4 py-3 bg-red-950/50 hover:bg-red-900 border border-red-800 text-red-400 text-xs font-black rounded-xl">
+                            🔒 Tutup Sesi & Buat Sesi Minggu Depan
+                        </button>
                       </div>
                       )
                     })}
+
+                    {/* HISTORY LOG TAMPIL DISINI */}
+                    {sessionHistory.length > 0 && (
+                        <div className="pt-4">
+                            <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">📜 Histori Kehadiran Sesi</h3>
+                            <div className="space-y-3">
+                                {sessionHistory.map(hs => (
+                                    <div key={hs.id} className="bg-gray-900 border border-gray-800 p-4 rounded-2xl">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-xs font-bold text-emerald-400">{hs.date}</span>
+                                            <span className="text-[9px] text-gray-400">{hs.location} - {hs.court}</span>
+                                        </div>
+                                        <p className="text-[10px] text-gray-300 leading-relaxed">
+                                            <span className="font-bold text-white">Hadir ({hs.attendees?.length || 0}):</span> {hs.attendees?.join(', ') || '-'}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                   </div>
                 )}
 
                 {/* 2. TAB ANGGOTA, IURAN & STATISTIK */}
                 {activeTab === 'players' && (
                   <div className="space-y-4">
-                    {/* Form Tambah Anggota */}
                     <div className="bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl">
                         <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">➕ Tambah Anggota</h3>
                         <form onSubmit={handleAddPlayer} className="grid grid-cols-2 gap-2">
@@ -393,10 +473,10 @@
                         </form>
                     </div>
 
-                    {/* Tabel Iuran */}
                     <div className="bg-gray-900 border border-gray-800 rounded-3xl shadow-xl overflow-hidden">
                       <div className="p-4 border-b border-gray-800 bg-gray-900/50">
                         <h3 className="text-xs font-black text-white uppercase tracking-wider">💰 Laporan Iuran Pemain</h3>
+                        <p className="text-[9px] text-gray-500 mt-1">Klik LUNAS untuk otomatis sync ke Kas Mutasi.</p>
                       </div>
                       <div className="overflow-x-auto p-2">
                           <table className="w-full text-left text-[10px]">
@@ -414,21 +494,19 @@
                                               <p className="font-bold text-white text-xs">{p.name}</p>
                                               <p className="text-emerald-400">Rp {p.fee.toLocaleString('id-ID')} {p.type === 'monthly' ? '' : '(Harian)'}</p>
                                               {p.type === 'per_play' && (
-                                                <button onClick={() => {
-                                                    setTxCategory('iuran'); setTxType('credit'); setTxAmount(p.fee); setTxDesc(`Iuran Harian - ${p.name}`); setActiveTab('ledger');
-                                                }} className="mt-1 px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 rounded text-white font-bold block">Bayar Harian +</button>
+                                                <button onClick={() => payPerPlay(p.id)} className="mt-1 px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 rounded text-white font-bold block">Catat Harian +</button>
                                               )}
                                           </td>
                                           <td className="p-2 text-center">
                                               {p.type === 'monthly' ? (
-                                                  <button onClick={() => togglePayment(p.id, '2026-06')} className={`px-2 py-1 rounded text-xs font-bold ${p.payments?.["2026-06"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
+                                                  <button onClick={() => togglePayment(p.id, '2026-06')} className={`px-2 py-1 rounded text-xs font-bold ${p.payments?.["2026-06"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
                                                       {p.payments?.["2026-06"] ? 'LUNAS ✅' : 'BELUM ❌'}
                                                   </button>
                                               ) : <span>-</span>}
                                           </td>
                                           <td className="p-2 text-center">
                                               {p.type === 'monthly' ? (
-                                                  <button onClick={() => togglePayment(p.id, '2026-07')} className={`px-2 py-1 rounded text-xs font-bold ${p.payments?.["2026-07"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
+                                                  <button onClick={() => togglePayment(p.id, '2026-07')} className={`px-2 py-1 rounded text-xs font-bold ${p.payments?.["2026-07"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
                                                       {p.payments?.["2026-07"] ? 'LUNAS ✅' : 'BELUM ❌'}
                                                   </button>
                                               ) : <span>-</span>}
@@ -440,9 +518,8 @@
                       </div>
                     </div>
 
-                    {/* Statistik Pemain (M/K) */}
                     <div className="bg-gray-900 border border-gray-800 rounded-3xl p-4 shadow-xl">
-                      <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">📊 Statistik Pemain (Menang/Kalah)</h3>
+                      <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">📊 Statistik Pemain (M/K)</h3>
                       <table className="w-full text-left text-[11px]">
                           <thead>
                             <tr className="bg-gray-950 text-gray-400 border-b border-gray-800">
@@ -470,8 +547,6 @@
                   <div className="space-y-4">
                     <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
                         <h3 className="text-sm font-black text-emerald-400 mb-4 text-center uppercase tracking-widest border-b border-gray-800 pb-3">🔥 Skor Match (Best of 3)</h3>
-                        
-                        {/* Pilihan Tim */}
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div className="space-y-2">
                                 <div className="bg-indigo-950 p-2 rounded-lg text-center"><span className="text-[10px] font-black text-indigo-400 uppercase">TIM A</span></div>
@@ -485,7 +560,6 @@
                             </div>
                         </div>
 
-                        {/* Input Skor Per Set */}
                         <div className="space-y-2">
                             {[0, 1, 2].map((idx) => (
                                 <div key={idx} className="bg-gray-950 p-3 rounded-xl border border-gray-800 flex items-center justify-between">
@@ -501,11 +575,9 @@
                                 </div>
                             ))}
                         </div>
-
                         <button onClick={handleSaveMatch} className="w-full mt-4 py-3 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl">💾 Simpan Hasil & Update Stats Pemain</button>
                     </div>
 
-                    {/* Histori Pertandingan */}
                     <div className="bg-gray-900 border border-gray-800 p-4 rounded-3xl shadow-xl">
                         <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">📋 Histori Match</h3>
                         <div className="space-y-3 max-h-[300px] overflow-y-auto">
@@ -578,7 +650,7 @@
                   </div>
                 )}
 
-                {/* 5. TAB TAKTIKAL (KEMBALI KE VERSI SEBELUMNYA) */}
+                {/* 5. TAB TAKTIKAL */}
                 {activeTab === 'tactical' && (
                   <div className="bg-gray-900 border border-gray-800 p-6 rounded-3xl shadow-xl flex flex-col items-center justify-center">
                     <h3 className="text-sm font-bold text-white mb-2 w-full">📋 Papan Strategi Court</h3>
