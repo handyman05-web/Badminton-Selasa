@@ -40,14 +40,23 @@
         const auth = window.firebase.auth();
         const db = window.firebase.firestore();
 
-        // --- DATA AWAL ---
+        // --- DATA AWAL (UPDATED V7) ---
         const INITIAL_PLAYERS = [
           { "id": "p1", "name": "Dr. Husni Lubis", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p2", "name": "Lae Agustin Tampubolon", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p3", "name": "Lae Handi", "whatsapp": "-", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p4", "name": "Lae Juntak", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p2", "name": "Agustin Tampubolon", "whatsapp": "-", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p3", "name": "Handi Muliawan", "whatsapp": "-", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p4", "name": "Dominique Simanjuntak", "whatsapp": "-", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p5", "name": "Lae Pakpahan", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p6", "name": "Uda", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } }
+          { "id": "p6", "name": "Uda", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p7", "name": "Faraz Siahaan", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p8", "name": "Saripudin", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p9", "name": "dr Irwan Sagala", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p10", "name": "Fransisco Moy", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p11", "name": "Jispen Siahaan", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p12", "name": "Eding Sembiring", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p13", "name": "Julianto Sinaga", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p14", "name": "Alex Sibarani", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p15", "name": "Haposan87", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } }
         ];
 
         const INITIAL_TRANSACTIONS = [
@@ -56,7 +65,6 @@
           { "id": "t3", "type": "debit", "category": "shuttlecock", "amount": 260000, "description": "Beli bola 2 tabung, merk AW", "date": "2026-06-08", "note": "Kuitansi Fisik", "hasReceipt": true }
         ];
 
-        // Format tanggal hari ini
         const todayStr = new Date().toISOString().slice(0, 10);
         const INITIAL_SESSIONS = [
           { "id": "s1", "date": todayStr, "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "time": "19:00 - 21:00", "isClosed": false, "rsvps": {} }
@@ -70,7 +78,8 @@
         ];
 
         const loadInitialData = () => {
-            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v5'); if (local) return JSON.parse(local); } catch (e) {}
+            // Version v7 agar semua device mendapat update data Handi, Dominique & Agustin
+            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v7'); if (local) return JSON.parse(local); } catch (e) {}
             return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS, sessionHistory: [], transactions: INITIAL_TRANSACTIONS, matches: [], tacticalPlayers: INITIAL_TACTICAL, updatedAt: 0 };
         };
 
@@ -121,7 +130,7 @@
                 tacticalPlayers: stateRef.current.tacticalPlayers, ...updatedFields, updatedAt: newTimestamp 
             };
             stateRef.current = payload; localUpdatedAt.current = newTimestamp;
-            localStorage.setItem('badminton_selasa_ceriadata_v5', JSON.stringify(payload));
+            localStorage.setItem('badminton_selasa_ceriadata_v7', JSON.stringify(payload));
 
             if (cloudStatus === 'connected' && workspaceUrl && user) {
                 db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(workspaceUrl).set(payload).catch(err => console.error(err));
@@ -149,7 +158,7 @@
                   setPlayers(cloudData.players || INITIAL_PLAYERS); setSessions(cloudData.sessions || INITIAL_SESSIONS); 
                   setSessionHistory(cloudData.sessionHistory || []); setTransactions(cloudData.transactions || INITIAL_TRANSACTIONS); 
                   setMatches(cloudData.matches || []); setTacticalPlayers(cloudData.tacticalPlayers || INITIAL_TACTICAL);
-                  localStorage.setItem('badminton_selasa_ceriadata_v5', JSON.stringify(cloudData));
+                  localStorage.setItem('badminton_selasa_ceriadata_v7', JSON.stringify(cloudData));
                 }
               } else { persistData({}); }
               setCloudStatus('connected');
@@ -218,7 +227,7 @@
              showToast("Sesi Ditutup! Histori tersimpan & Jadwal baru dibuat 🗓️", "success");
           };
 
-          // Handler Tambah Anggota & Update Iuran Terintegrasi
+          // Handler Tambah Anggota & Update Iuran
           const handleAddPlayer = (e) => {
             e.preventDefault();
             if (!pName.trim()) { showToast("Nama tidak boleh kosong!", "error"); return; }
@@ -242,7 +251,7 @@
              setPlayers(updated);
              
              // AUTO UPDATE KAS JIKA DARI BELUM -> LUNAS
-             if (!isPaid) {
+             if (!isPaid && player.fee > 0) {
                  const newTx = {
                     id: 't_' + Date.now(), type: 'credit', category: 'iuran', amount: player.fee, 
                     description: `Iuran Bulanan (${monthKey}) - ${player.name}`,
@@ -254,12 +263,20 @@
                  showToast(`LUNAS! Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
              } else {
                  persistData({ players: updated });
-                 showToast("Status diubah ke Belum Lunas. (Cek Kas Manual) ❌", "info");
+                 if(!isPaid && player.fee === 0) {
+                     showToast("Status Lunas. (Fee Rp 0, Kas tidak berubah) ✅", "success");
+                 } else {
+                     showToast("Status diubah ke Belum Lunas. (Cek Kas Manual) ❌", "info");
+                 }
              }
           };
 
           const payPerPlay = (playerId) => {
              const player = players.find(p => p.id === playerId);
+             if (player.fee <= 0) {
+                showToast("Fee per play pemain ini adalah Rp 0.", "info");
+                return;
+             }
              const newTx = {
                   id: 't_' + Date.now(), type: 'credit', category: 'iuran', amount: player.fee, 
                   description: `Iuran Harian - ${player.name}`,
@@ -330,12 +347,19 @@
           const totalUangKeluar = transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
           const saldoKas = totalUangMasuk - totalUangKeluar;
 
-          // Copy Link Logic
-          const copyLink = () => {
-              navigator.clipboard.writeText(window.location.href);
-              showToast("Link workspace disalin! 📋", "success");
+          // Copy Link & WA Logic
+          const getShareUrl = () => {
+              const currentUrl = window.location.href;
+              return currentUrl.includes('?workspace=') 
+                  ? currentUrl 
+                  : `${window.location.origin}${window.location.pathname}?workspace=badminton-selasa-ceria`;
           };
-          const waMessage = `🏸 JADWAL BADMINTON SELASA CERIA 🏸%0A%0AMari join sesi di Arena.%0ADaftar absensi & update statistik di sini:%0A${encodeURIComponent(window.location.href)}%0A%0AMohon konfirmasi kehadirannya ya saudaraku! 🙏`;
+
+          const copyLink = () => {
+              navigator.clipboard.writeText(getShareUrl());
+              showToast("Link spesifik workspace disalin! 📋", "success");
+          };
+          const waMessage = `🏸 JADWAL BADMINTON SELASA CERIA 🏸%0A%0AMari join sesi di Arena.%0ADaftar absensi & update statistik di sini:%0A${encodeURIComponent(getShareUrl())}%0A%0AMohon konfirmasi kehadirannya ya saudaraku! 🙏`;
 
           return (
             <div className="min-h-screen bg-gray-950 text-gray-100 font-sans antialiased pb-20">
@@ -356,7 +380,7 @@
                 <div className="max-w-md mx-auto h-16 flex items-center justify-between">
                   <div>
                     <h1 className="text-base font-black text-emerald-400">Badminton Selasa Ceria</h1>
-                    <p className="text-[10px] text-gray-400">Cloud Sync Active | Admin: Handi</p>
+                    <p className="text-[10px] text-gray-400">Cloud Sync Active</p>
                   </div>
                   <div className="flex gap-2">
                       <button onClick={copyLink} className="bg-gray-800 p-2 rounded-xl text-[9px] font-bold text-gray-300">COPY</button>
@@ -433,7 +457,7 @@
                       )
                     })}
 
-                    {/* HISTORY LOG TAMPIL DISINI */}
+                    {/* HISTORY LOG */}
                     {sessionHistory.length > 0 && (
                         <div className="pt-4">
                             <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">📜 Histori Kehadiran Sesi</h3>
@@ -459,9 +483,10 @@
                 {activeTab === 'players' && (
                   <div className="space-y-4">
                     <div className="bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl">
-                        <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">➕ Tambah Anggota</h3>
+                        <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">➕ Tambah Anggota / Update WA</h3>
                         <form onSubmit={handleAddPlayer} className="grid grid-cols-2 gap-2">
                             <input type="text" value={pName} onChange={(e) => setPName(e.target.value)} placeholder="Nama Lengkap" className="col-span-2 w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white" />
+                            <input type="text" value={pWa} onChange={(e) => setPWa(e.target.value)} placeholder="No. WhatsApp (opsional)" className="col-span-2 w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white" />
                             <select value={pRole} onChange={(e) => setPRole(e.target.value)} className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white">
                                 <option value="player">Player</option><option value="admin">Admin</option>
                             </select>
@@ -482,7 +507,7 @@
                           <table className="w-full text-left text-[10px]">
                               <thead>
                                   <tr className="text-gray-400 border-b border-gray-800">
-                                      <th className="p-2 font-bold">Nama (Tipe)</th>
+                                      <th className="p-2 font-bold min-w-[120px]">Nama & Detail</th>
                                       <th className="p-2 font-bold text-center">Juni 2026</th>
                                       <th className="p-2 font-bold text-center">Juli 2026</th>
                                   </tr>
@@ -491,25 +516,29 @@
                                   {players.map(p => (
                                       <tr key={p.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
                                           <td className="p-2">
-                                              <p className="font-bold text-white text-xs">{p.name}</p>
-                                              <p className="text-emerald-400">Rp {p.fee.toLocaleString('id-ID')} {p.type === 'monthly' ? '' : '(Harian)'}</p>
+                                              <p className="font-bold text-white text-xs flex items-center flex-wrap gap-1">
+                                                  {p.name}
+                                                  {p.role === 'admin' && <span className="bg-emerald-600 text-white text-[8px] px-1.5 py-0.5 rounded uppercase font-black tracking-wider">Admin</span>}
+                                              </p>
+                                              <p className="text-[9px] text-gray-400 mt-0.5">WA: {p.whatsapp || '-'}</p>
+                                              <p className="text-emerald-400 font-medium">Rp {p.fee.toLocaleString('id-ID')} {p.type === 'monthly' ? '' : '(Harian)'}</p>
                                               {p.type === 'per_play' && (
                                                 <button onClick={() => payPerPlay(p.id)} className="mt-1 px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 rounded text-white font-bold block">Catat Harian +</button>
                                               )}
                                           </td>
-                                          <td className="p-2 text-center">
+                                          <td className="p-2 text-center align-top">
                                               {p.type === 'monthly' ? (
-                                                  <button onClick={() => togglePayment(p.id, '2026-06')} className={`px-2 py-1 rounded text-xs font-bold ${p.payments?.["2026-06"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
+                                                  <button onClick={() => togglePayment(p.id, '2026-06')} className={`px-2 py-1 rounded text-xs font-bold w-full max-w-[70px] ${p.payments?.["2026-06"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
                                                       {p.payments?.["2026-06"] ? 'LUNAS ✅' : 'BELUM ❌'}
                                                   </button>
-                                              ) : <span>-</span>}
+                                              ) : <span className="text-gray-600">-</span>}
                                           </td>
-                                          <td className="p-2 text-center">
+                                          <td className="p-2 text-center align-top">
                                               {p.type === 'monthly' ? (
-                                                  <button onClick={() => togglePayment(p.id, '2026-07')} className={`px-2 py-1 rounded text-xs font-bold ${p.payments?.["2026-07"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
+                                                  <button onClick={() => togglePayment(p.id, '2026-07')} className={`px-2 py-1 rounded text-xs font-bold w-full max-w-[70px] ${p.payments?.["2026-07"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
                                                       {p.payments?.["2026-07"] ? 'LUNAS ✅' : 'BELUM ❌'}
                                                   </button>
-                                              ) : <span>-</span>}
+                                              ) : <span className="text-gray-600">-</span>}
                                           </td>
                                       </tr>
                                   ))}
