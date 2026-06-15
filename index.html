@@ -40,12 +40,12 @@
         const auth = window.firebase.auth();
         const db = window.firebase.firestore();
 
-        // --- DATA AWAL (UPDATED V9 DENGAN WHATSAPP & ROLE BARU) ---
+        // --- DATA AWAL (RESTORED FULL NAMES + WHATSAPP V10) ---
         const INITIAL_PLAYERS = [
           { "id": "p1", "name": "Pak dr. Husni Lubis", "whatsapp": "+62 852-7091-9961", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p2", "name": "Lae Agustin Tampubolon", "whatsapp": "+62 812-6174-782", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p3", "name": "Lae Handi", "whatsapp": "08556587299", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p4", "name": "Lae Juntak", "whatsapp": "+62 813-6481-2304", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p2", "name": "Agustin Tampubolon", "whatsapp": "+62 812-6174-782", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p3", "name": "Handi Muliawan", "whatsapp": "08556587299", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p4", "name": "Dominique Simanjuntak", "whatsapp": "+62 813-6481-2304", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p5", "name": "Lae Pakpahan", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p6", "name": "Uda", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p11", "name": "Jispen Siahaan", "whatsapp": "+62 811-6665-235", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
@@ -78,8 +78,8 @@
         ];
 
         const loadInitialData = () => {
-            // Version v9 agar semua device update field WA, Role, dan bisa Edit Anggota
-            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v9'); if (local) return JSON.parse(local); } catch (e) {}
+            // Version v10 memaksa sistem merestore nama utuh & field yang disempurnakan
+            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v10'); if (local) return JSON.parse(local); } catch (e) {}
             return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS, sessionHistory: [], transactions: INITIAL_TRANSACTIONS, matches: [], tacticalPlayers: INITIAL_TACTICAL, updatedAt: 0 };
         };
 
@@ -131,7 +131,7 @@
                 tacticalPlayers: stateRef.current.tacticalPlayers, ...updatedFields, updatedAt: newTimestamp 
             };
             stateRef.current = payload; localUpdatedAt.current = newTimestamp;
-            localStorage.setItem('badminton_selasa_ceriadata_v9', JSON.stringify(payload));
+            localStorage.setItem('badminton_selasa_ceriadata_v10', JSON.stringify(payload));
 
             if (cloudStatus === 'connected' && workspaceUrl && user) {
                 db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(workspaceUrl).set(payload).catch(err => console.error(err));
@@ -159,7 +159,7 @@
                   setPlayers(cloudData.players || INITIAL_PLAYERS); setSessions(cloudData.sessions || INITIAL_SESSIONS); 
                   setSessionHistory(cloudData.sessionHistory || []); setTransactions(cloudData.transactions || INITIAL_TRANSACTIONS); 
                   setMatches(cloudData.matches || []); setTacticalPlayers(cloudData.tacticalPlayers || INITIAL_TACTICAL);
-                  localStorage.setItem('badminton_selasa_ceriadata_v9', JSON.stringify(cloudData));
+                  localStorage.setItem('badminton_selasa_ceriadata_v10', JSON.stringify(cloudData));
                 }
               } else { persistData({}); }
               setCloudStatus('connected');
