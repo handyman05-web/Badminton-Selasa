@@ -40,23 +40,23 @@
         const auth = window.firebase.auth();
         const db = window.firebase.firestore();
 
-        // --- DATA AWAL (UPDATED V7) ---
+        // --- DATA AWAL (UPDATED V9 DENGAN WHATSAPP & ROLE BARU) ---
         const INITIAL_PLAYERS = [
-          { "id": "p1", "name": "Dr. Husni Lubis", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p2", "name": "Agustin Tampubolon", "whatsapp": "-", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p3", "name": "Handi Muliawan", "whatsapp": "-", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p4", "name": "Dominique Simanjuntak", "whatsapp": "-", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p1", "name": "Pak dr. Husni Lubis", "whatsapp": "+62 852-7091-9961", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p2", "name": "Lae Agustin Tampubolon", "whatsapp": "+62 812-6174-782", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p3", "name": "Lae Handi", "whatsapp": "08556587299", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p4", "name": "Lae Juntak", "whatsapp": "+62 813-6481-2304", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p5", "name": "Lae Pakpahan", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p6", "name": "Uda", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p7", "name": "Faraz Siahaan", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p8", "name": "Saripudin", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p9", "name": "dr Irwan Sagala", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p10", "name": "Fransisco Moy", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p11", "name": "Jispen Siahaan", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p12", "name": "Eding Sembiring", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p13", "name": "Julianto Sinaga", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p14", "name": "Alex Sibarani", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p15", "name": "Haposan87", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } }
+          { "id": "p11", "name": "Jispen Siahaan", "whatsapp": "+62 811-6665-235", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p7", "name": "Faraz Siahaan", "whatsapp": "+62 821-7337-7777", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p8", "name": "Saripudin", "whatsapp": "+62 822-8302-1193", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p9", "name": "dr Irwan Sagala", "whatsapp": "+62 822-7311-7312", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p10", "name": "Fransisco Moy", "whatsapp": "+62 813-7223-7600", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p12", "name": "Eding Sembiring", "whatsapp": "+62 813-8868-9272", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p13", "name": "Julianto Sinaga", "whatsapp": "+62 815-3000-159", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p14", "name": "Alex Sibarani", "whatsapp": "+62 812-6360-4429", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p15", "name": "Haposan87", "whatsapp": "+62 895-4102-69007", "role": "admin", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } }
         ];
 
         const INITIAL_TRANSACTIONS = [
@@ -78,8 +78,8 @@
         ];
 
         const loadInitialData = () => {
-            // Version v7 agar semua device mendapat update data Handi, Dominique & Agustin
-            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v7'); if (local) return JSON.parse(local); } catch (e) {}
+            // Version v9 agar semua device update field WA, Role, dan bisa Edit Anggota
+            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v9'); if (local) return JSON.parse(local); } catch (e) {}
             return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS, sessionHistory: [], transactions: INITIAL_TRANSACTIONS, matches: [], tacticalPlayers: INITIAL_TACTICAL, updatedAt: 0 };
         };
 
@@ -98,7 +98,8 @@
           const localUpdatedAt = useRef(initialData.updatedAt || 0);
           const canvasRef = useRef(null);
 
-          // State Anggota
+          // State Anggota & Edit Anggota
+          const [editPlayerId, setEditPlayerId] = useState(null);
           const [pName, setPName] = useState(''); const [pRole, setPRole] = useState('player'); const [pWa, setPWa] = useState('');
           const [pType, setPType] = useState('monthly'); const [pFee, setPFee] = useState('100000');
 
@@ -130,7 +131,7 @@
                 tacticalPlayers: stateRef.current.tacticalPlayers, ...updatedFields, updatedAt: newTimestamp 
             };
             stateRef.current = payload; localUpdatedAt.current = newTimestamp;
-            localStorage.setItem('badminton_selasa_ceriadata_v7', JSON.stringify(payload));
+            localStorage.setItem('badminton_selasa_ceriadata_v9', JSON.stringify(payload));
 
             if (cloudStatus === 'connected' && workspaceUrl && user) {
                 db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(workspaceUrl).set(payload).catch(err => console.error(err));
@@ -158,7 +159,7 @@
                   setPlayers(cloudData.players || INITIAL_PLAYERS); setSessions(cloudData.sessions || INITIAL_SESSIONS); 
                   setSessionHistory(cloudData.sessionHistory || []); setTransactions(cloudData.transactions || INITIAL_TRANSACTIONS); 
                   setMatches(cloudData.matches || []); setTacticalPlayers(cloudData.tacticalPlayers || INITIAL_TACTICAL);
-                  localStorage.setItem('badminton_selasa_ceriadata_v7', JSON.stringify(cloudData));
+                  localStorage.setItem('badminton_selasa_ceriadata_v9', JSON.stringify(cloudData));
                 }
               } else { persistData({}); }
               setCloudStatus('connected');
@@ -227,17 +228,47 @@
              showToast("Sesi Ditutup! Histori tersimpan & Jadwal baru dibuat 🗓️", "success");
           };
 
-          // Handler Tambah Anggota & Update Iuran
+          // Handler Edit Form
+          const handleEditClick = (p) => {
+             setEditPlayerId(p.id);
+             setPName(p.name);
+             setPWa(p.whatsapp || '');
+             setPRole(p.role);
+             setPType(p.type);
+             setPFee(p.fee.toString());
+             window.scrollTo({ top: 0, behavior: 'smooth' });
+          };
+
+          const cancelEdit = () => {
+             setEditPlayerId(null);
+             setPName(''); setPWa(''); setPRole('player'); setPType('monthly'); setPFee('100000');
+          };
+
+          // Handler Tambah/Update Anggota
           const handleAddPlayer = (e) => {
             e.preventDefault();
             if (!pName.trim()) { showToast("Nama tidak boleh kosong!", "error"); return; }
-            const newPlayer = {
-                id: 'p_' + Date.now(), name: pName.trim(), whatsapp: pWa.trim() || '-', role: pRole, type: pType, fee: parseFloat(pFee) || 0,
-                payments: {"2026-06": false, "2026-07": false}, stats: { played: 0, won: 0, lost: 0 }
-            };
-            const updatedPlayers = [...players, newPlayer]; setPlayers(updatedPlayers);
-            setPName(''); setPWa(''); setPRole('player'); persistData({ players: updatedPlayers });
-            showToast("Anggota Baru Terdaftar! 👥", "success");
+            
+            if (editPlayerId) {
+                // Update mode
+                const updatedPlayers = players.map(p => 
+                    p.id === editPlayerId ? { ...p, name: pName.trim(), whatsapp: pWa.trim() || '-', role: pRole, type: pType, fee: parseFloat(pFee) || 0 } : p
+                );
+                setPlayers(updatedPlayers);
+                persistData({ players: updatedPlayers });
+                showToast("Data Anggota Diperbarui! ✏️", "success");
+                cancelEdit();
+            } else {
+                // Add mode
+                const newPlayer = {
+                    id: 'p_' + Date.now(), name: pName.trim(), whatsapp: pWa.trim() || '-', role: pRole, type: pType, fee: parseFloat(pFee) || 0,
+                    payments: {"2026-06": false, "2026-07": false}, stats: { played: 0, won: 0, lost: 0 }
+                };
+                const updatedPlayers = [...players, newPlayer]; setPlayers(updatedPlayers);
+                persistData({ players: updatedPlayers });
+                showToast("Anggota Baru Terdaftar! 👥", "success");
+                cancelEdit();
+            }
           };
 
           const togglePayment = (playerId, monthKey) => {
@@ -250,7 +281,7 @@
              });
              setPlayers(updated);
              
-             // AUTO UPDATE KAS JIKA DARI BELUM -> LUNAS
+             // AUTO UPDATE KAS
              if (!isPaid && player.fee > 0) {
                  const newTx = {
                     id: 't_' + Date.now(), type: 'credit', category: 'iuran', amount: player.fee, 
@@ -347,7 +378,7 @@
           const totalUangKeluar = transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
           const saldoKas = totalUangMasuk - totalUangKeluar;
 
-          // Copy Link & WA Logic
+          // Copy Link & Dynamic WA Message Logic
           const getShareUrl = () => {
               const currentUrl = window.location.href;
               return currentUrl.includes('?workspace=') 
@@ -359,7 +390,36 @@
               navigator.clipboard.writeText(getShareUrl());
               showToast("Link spesifik workspace disalin! 📋", "success");
           };
-          const waMessage = `🏸 JADWAL BADMINTON SELASA CERIA 🏸%0A%0AMari join sesi di Arena.%0ADaftar absensi & update statistik di sini:%0A${encodeURIComponent(getShareUrl())}%0A%0AMohon konfirmasi kehadirannya ya saudaraku! 🙏`;
+
+          // Generate Dynamic Text for WA
+          const activeSession = sessions[0] || {};
+          const rsvps = activeSession.rsvps || {};
+          
+          const attending = players.filter(p => rsvps[p.id] === 'YES');
+          const notVoted = players.filter(p => !rsvps[p.id] || rsvps[p.id] === 'NO_RESPONSE');
+
+          let waText = `🏸 *JADWAL BADMINTON SELASA CERIA* 🏸\n\n`;
+          waText += `📍 *Lokasi:* ${activeSession.location || 'Arena'} (${activeSession.court || ''})\n`;
+          waText += `🗓️ *Tanggal:* ${activeSession.date || ''}\n\n`;
+          
+          waText += `✅ *List Hadir (${attending.length}):*\n`;
+          if (attending.length > 0) {
+              attending.forEach((p, i) => waText += `${i + 1}. ${p.name}\n`);
+          } else {
+              waText += `- Belum ada -\n`;
+          }
+
+          waText += `\n⏳ *Belum Konfirmasi (${notVoted.length}):*\n`;
+          if (notVoted.length > 0) {
+              notVoted.forEach(p => waText += `- ${p.name}\n`);
+          } else {
+              waText += `- Semua sudah konfirmasi -\n`;
+          }
+
+          waText += `\n👉 *Update absensi & statistik di sini:*\n${getShareUrl()}\n\n`;
+          waText += `Mohon segera konfirmasi kehadirannya ya saudaraku! 🙏`;
+
+          const waMessageEncoded = encodeURIComponent(waText);
 
           return (
             <div className="min-h-screen bg-gray-950 text-gray-100 font-sans antialiased pb-20">
@@ -380,11 +440,11 @@
                 <div className="max-w-md mx-auto h-16 flex items-center justify-between">
                   <div>
                     <h1 className="text-base font-black text-emerald-400">Badminton Selasa Ceria</h1>
-                    <p className="text-[10px] text-gray-400">Cloud Sync Active</p>
+                    <p className="text-[10px] text-gray-400">Cloud Sync Active | Admin: Handi</p>
                   </div>
                   <div className="flex gap-2">
                       <button onClick={copyLink} className="bg-gray-800 p-2 rounded-xl text-[9px] font-bold text-gray-300">COPY</button>
-                      <a href={`https://wa.me/?text=${waMessage}`} target="_blank" className="bg-green-700 p-2 rounded-xl text-[9px] font-bold text-white">WA</a>
+                      <a href={`https://wa.me/?text=${waMessageEncoded}`} target="_blank" className="bg-green-700 p-2 rounded-xl text-[9px] font-bold text-white">WA</a>
                   </div>
                 </div>
               </header>
@@ -443,6 +503,7 @@
                                 <span className="text-xs font-bold text-white w-24 truncate">{p.name}</span>
                                 <div className="flex gap-1">
                                   <button onClick={() => handleRsvpChange(s.id, p.id, 'YES')} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'YES' ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ikut</button>
+                                  <button onClick={() => handleRsvpChange(s.id, p.id, 'MAYBE')} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'MAYBE' ? 'bg-yellow-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ragu</button>
                                   <button onClick={() => handleRsvpChange(s.id, p.id, 'NO')} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'NO' ? 'bg-red-500 text-white' : 'bg-gray-800 text-gray-400'}`}>Absen</button>
                                 </div>
                               </div>
@@ -483,7 +544,9 @@
                 {activeTab === 'players' && (
                   <div className="space-y-4">
                     <div className="bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl">
-                        <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">➕ Tambah Anggota / Update WA</h3>
+                        <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">
+                            {editPlayerId ? "✏️ Edit Anggota" : "➕ Tambah Anggota"}
+                        </h3>
                         <form onSubmit={handleAddPlayer} className="grid grid-cols-2 gap-2">
                             <input type="text" value={pName} onChange={(e) => setPName(e.target.value)} placeholder="Nama Lengkap" className="col-span-2 w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white" />
                             <input type="text" value={pWa} onChange={(e) => setPWa(e.target.value)} placeholder="No. WhatsApp (opsional)" className="col-span-2 w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white" />
@@ -494,7 +557,17 @@
                                 <option value="monthly">Iuran Bulanan</option><option value="per_play">Iuran Per Play</option>
                             </select>
                             <input type="number" value={pFee} onChange={(e) => setPFee(e.target.value)} placeholder="Nominal (Rp)" className="col-span-2 w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white" />
-                            <button type="submit" className="col-span-2 w-full py-2 bg-emerald-500 text-gray-950 text-xs font-black rounded-xl">Simpan Anggota Baru</button>
+                            
+                            <div className="col-span-2 flex gap-2 mt-1">
+                                <button type="submit" className="flex-1 py-2 bg-emerald-500 text-gray-950 text-xs font-black rounded-xl">
+                                    {editPlayerId ? "Update Data" : "Simpan Anggota"}
+                                </button>
+                                {editPlayerId && (
+                                    <button type="button" onClick={cancelEdit} className="flex-1 py-2 bg-gray-700 text-white text-xs font-black rounded-xl">
+                                        Batal Edit
+                                    </button>
+                                )}
+                            </div>
                         </form>
                     </div>
 
@@ -516,24 +589,29 @@
                                   {players.map(p => (
                                       <tr key={p.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
                                           <td className="p-2">
-                                              <p className="font-bold text-white text-xs flex items-center flex-wrap gap-1">
-                                                  {p.name}
-                                                  {p.role === 'admin' && <span className="bg-emerald-600 text-white text-[8px] px-1.5 py-0.5 rounded uppercase font-black tracking-wider">Admin</span>}
-                                              </p>
-                                              <p className="text-[9px] text-gray-400 mt-0.5">WA: {p.whatsapp || '-'}</p>
-                                              <p className="text-emerald-400 font-medium">Rp {p.fee.toLocaleString('id-ID')} {p.type === 'monthly' ? '' : '(Harian)'}</p>
+                                              <div className="flex justify-between items-start">
+                                                  <div>
+                                                      <p className="font-bold text-white text-xs flex items-center flex-wrap gap-1">
+                                                          {p.name}
+                                                          {p.role === 'admin' && <span className="bg-emerald-600 text-white text-[8px] px-1.5 py-0.5 rounded uppercase font-black tracking-wider">Admin</span>}
+                                                      </p>
+                                                      <p className="text-[9px] text-gray-400 mt-0.5">WA: {p.whatsapp || '-'}</p>
+                                                      <p className="text-emerald-400 font-medium mt-0.5">Rp {p.fee.toLocaleString('id-ID')} {p.type === 'monthly' ? '' : '(Harian)'}</p>
+                                                  </div>
+                                                  <button onClick={() => handleEditClick(p)} className="p-1 bg-gray-800 text-gray-400 hover:text-emerald-400 rounded transition" title="Edit Anggota">✏️</button>
+                                              </div>
                                               {p.type === 'per_play' && (
                                                 <button onClick={() => payPerPlay(p.id)} className="mt-1 px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 rounded text-white font-bold block">Catat Harian +</button>
                                               )}
                                           </td>
-                                          <td className="p-2 text-center align-top">
+                                          <td className="p-2 text-center align-top pt-3">
                                               {p.type === 'monthly' ? (
                                                   <button onClick={() => togglePayment(p.id, '2026-06')} className={`px-2 py-1 rounded text-xs font-bold w-full max-w-[70px] ${p.payments?.["2026-06"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
                                                       {p.payments?.["2026-06"] ? 'LUNAS ✅' : 'BELUM ❌'}
                                                   </button>
                                               ) : <span className="text-gray-600">-</span>}
                                           </td>
-                                          <td className="p-2 text-center align-top">
+                                          <td className="p-2 text-center align-top pt-3">
                                               {p.type === 'monthly' ? (
                                                   <button onClick={() => togglePayment(p.id, '2026-07')} className={`px-2 py-1 rounded text-xs font-bold w-full max-w-[70px] ${p.payments?.["2026-07"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
                                                       {p.payments?.["2026-07"] ? 'LUNAS ✅' : 'BELUM ❌'}
