@@ -40,12 +40,12 @@
         const auth = window.firebase.auth();
         const db = window.firebase.firestore();
 
-        // --- DATA AWAL (RESTORED FULL NAMES + WHATSAPP V10) ---
+        // --- DATA AWAL (UPDATED V11 DENGAN NAMA, ROLE & WA FINAL) ---
         const INITIAL_PLAYERS = [
           { "id": "p1", "name": "Pak dr. Husni Lubis", "whatsapp": "+62 852-7091-9961", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p2", "name": "Agustin Tampubolon", "whatsapp": "+62 812-6174-782", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p3", "name": "Handi Muliawan", "whatsapp": "08556587299", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p4", "name": "Dominique Simanjuntak", "whatsapp": "+62 813-6481-2304", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p2", "name": "Lae Agustin Tampubolon", "whatsapp": "+62 812-6174-782", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p3", "name": "Lae Handi", "whatsapp": "08556587299", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p4", "name": "Lae Juntak", "whatsapp": "+62 813-6481-2304", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p5", "name": "Lae Pakpahan", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p6", "name": "Uda", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p11", "name": "Jispen Siahaan", "whatsapp": "+62 811-6665-235", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
@@ -78,8 +78,8 @@
         ];
 
         const loadInitialData = () => {
-            // Version v10 memaksa sistem merestore nama utuh & field yang disempurnakan
-            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v10'); if (local) return JSON.parse(local); } catch (e) {}
+            // Version v11 agar semua sinkronisasi nama dan fitur Edit/Copy bekerja
+            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v11'); if (local) return JSON.parse(local); } catch (e) {}
             return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS, sessionHistory: [], transactions: INITIAL_TRANSACTIONS, matches: [], tacticalPlayers: INITIAL_TACTICAL, updatedAt: 0 };
         };
 
@@ -131,7 +131,7 @@
                 tacticalPlayers: stateRef.current.tacticalPlayers, ...updatedFields, updatedAt: newTimestamp 
             };
             stateRef.current = payload; localUpdatedAt.current = newTimestamp;
-            localStorage.setItem('badminton_selasa_ceriadata_v10', JSON.stringify(payload));
+            localStorage.setItem('badminton_selasa_ceriadata_v11', JSON.stringify(payload));
 
             if (cloudStatus === 'connected' && workspaceUrl && user) {
                 db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(workspaceUrl).set(payload).catch(err => console.error(err));
@@ -159,7 +159,7 @@
                   setPlayers(cloudData.players || INITIAL_PLAYERS); setSessions(cloudData.sessions || INITIAL_SESSIONS); 
                   setSessionHistory(cloudData.sessionHistory || []); setTransactions(cloudData.transactions || INITIAL_TRANSACTIONS); 
                   setMatches(cloudData.matches || []); setTacticalPlayers(cloudData.tacticalPlayers || INITIAL_TACTICAL);
-                  localStorage.setItem('badminton_selasa_ceriadata_v10', JSON.stringify(cloudData));
+                  localStorage.setItem('badminton_selasa_ceriadata_v11', JSON.stringify(cloudData));
                 }
               } else { persistData({}); }
               setCloudStatus('connected');
@@ -386,27 +386,34 @@
                   : `${window.location.origin}${window.location.pathname}?workspace=badminton-selasa-ceria`;
           };
 
-          const copyLink = () => {
-              navigator.clipboard.writeText(getShareUrl());
-              showToast("Link spesifik workspace disalin! 📋", "success");
-          };
-
           // Generate Dynamic Text for WA
           const activeSession = sessions[0] || {};
           const rsvps = activeSession.rsvps || {};
           
           const attending = players.filter(p => rsvps[p.id] === 'YES');
+          const absent = players.filter(p => rsvps[p.id] === 'NO');
+          const maybe = players.filter(p => rsvps[p.id] === 'MAYBE');
           const notVoted = players.filter(p => !rsvps[p.id] || rsvps[p.id] === 'NO_RESPONSE');
 
           let waText = `🏸 *JADWAL BADMINTON SELASA CERIA* 🏸\n\n`;
           waText += `📍 *Lokasi:* ${activeSession.location || 'Arena'} (${activeSession.court || ''})\n`;
           waText += `🗓️ *Tanggal:* ${activeSession.date || ''}\n\n`;
           
-          waText += `✅ *List Hadir (${attending.length}):*\n`;
+          waText += `✅ *Hadir (${attending.length}):*\n`;
           if (attending.length > 0) {
               attending.forEach((p, i) => waText += `${i + 1}. ${p.name}\n`);
           } else {
               waText += `- Belum ada -\n`;
+          }
+
+          if (maybe.length > 0) {
+              waText += `\n❓ *Ragu/Menyusul (${maybe.length}):*\n`;
+              maybe.forEach((p, i) => waText += `${i + 1}. ${p.name}\n`);
+          }
+
+          if (absent.length > 0) {
+              waText += `\n❌ *Absen (${absent.length}):*\n`;
+              absent.forEach((p, i) => waText += `${i + 1}. ${p.name}\n`);
           }
 
           waText += `\n⏳ *Belum Konfirmasi (${notVoted.length}):*\n`;
@@ -420,6 +427,11 @@
           waText += `Mohon segera konfirmasi kehadirannya ya saudaraku! 🙏`;
 
           const waMessageEncoded = encodeURIComponent(waText);
+
+          const copyMessage = () => {
+              navigator.clipboard.writeText(waText);
+              showToast("Jadwal & Teks Absensi disalin ke clipboard! 📋", "success");
+          };
 
           return (
             <div className="min-h-screen bg-gray-950 text-gray-100 font-sans antialiased pb-20">
@@ -443,8 +455,9 @@
                     <p className="text-[10px] text-gray-400">Cloud Sync Active | Admin: Handi</p>
                   </div>
                   <div className="flex gap-2">
-                      <button onClick={copyLink} className="bg-gray-800 p-2 rounded-xl text-[9px] font-bold text-gray-300">COPY</button>
-                      <a href={`https://wa.me/?text=${waMessageEncoded}`} target="_blank" className="bg-green-700 p-2 rounded-xl text-[9px] font-bold text-white">WA</a>
+                      {/* Tombol Copy Sekarang Menyalin Teks Penuh, Bukan Cuma Link */}
+                      <button onClick={copyMessage} className="bg-gray-800 px-3 py-2 rounded-xl text-[10px] font-bold text-gray-300">COPY TEKS</button>
+                      <a href={`https://wa.me/?text=${waMessageEncoded}`} target="_blank" className="bg-green-700 px-3 py-2 rounded-xl text-[10px] font-bold text-white">WA</a>
                   </div>
                 </div>
               </header>
