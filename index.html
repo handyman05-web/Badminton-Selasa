@@ -25,11 +25,12 @@
         // Kunci konsisten untuk Local Storage
         const LOCAL_STORAGE_KEY = 'badminton_selasa_ceriadata_v12';
         
+        // FIREBASE CONFIG UPDATED TO "badminton-selasa"
         const FALLBACK_FIREBASE_CONFIG = {
           apiKey: "AIzaSyAKWV_5Y9gWh7_Mp33YeTYS-v0kGGO0K0s",
-          authDomain: "gki-bs-badminton-play.firebaseapp.com",
-          projectId: "gki-bs-badminton-play",
-          storageBucket: "gki-bs-badminton-play.firebasestorage.app",
+          authDomain: "badminton-selasa.firebaseapp.com",
+          projectId: "badminton-selasa",
+          storageBucket: "badminton-selasa.firebasestorage.app",
           messagingSenderId: "496261059958",
           appId: "1:496261059958:web:8b58e42f05dbc24fd3d657",
           measurementId: "G-VFEJCT46PF"
@@ -137,7 +138,6 @@
                 tacticalPlayers: stateRef.current.tacticalPlayers, ...updatedFields, updatedAt: newTimestamp 
             };
             stateRef.current = payload; localUpdatedAt.current = newTimestamp;
-            // Gunakan LOCAL_STORAGE_KEY yang konsisten
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
 
             if (cloudStatus === 'connected' && workspaceUrl && user) {
@@ -161,13 +161,11 @@
             const unsubFirestore = roomRef.onSnapshot(doc => {
               if (doc.exists) {
                 const cloudData = doc.data();
-                // Hanya update local state jika data cloud lebih baru
                 if (cloudData.updatedAt > localUpdatedAt.current) {
                   localUpdatedAt.current = cloudData.updatedAt; stateRef.current = cloudData;
                   setPlayers(cloudData.players || INITIAL_PLAYERS); setSessions(cloudData.sessions || INITIAL_SESSIONS); 
                   setSessionHistory(cloudData.sessionHistory || []); setTransactions(cloudData.transactions || INITIAL_TRANSACTIONS); 
                   setMatches(cloudData.matches || []); setTacticalPlayers(cloudData.tacticalPlayers || INITIAL_TACTICAL);
-                  // Gunakan LOCAL_STORAGE_KEY yang konsisten
                   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudData));
                 }
               } else { persistData({}); }
@@ -206,17 +204,15 @@
              const session = sessions.find(s => s.id === sessionId);
              if(!session) return;
              
-             // 1. Catat ke Histori
              const attendees = Object.keys(session.rsvps).filter(uid => session.rsvps[uid] === 'YES').map(uid => players.find(p=>p.id===uid)?.name).filter(Boolean);
              const historyLog = { ...session, isClosed: true, attendees };
              const newHistory = [historyLog, ...sessionHistory];
              
-             // 2. Buat Sesi Baru (Minggu Depan)
              let nextDateStr = "";
              const parts = session.date.split('-');
              if (parts.length === 3) {
                  let d = new Date(parts[0], parts[1] - 1, parts[2]);
-                 d.setDate(d.getDate() + 7); // Tambah 7 Hari
+                 d.setDate(d.getDate() + 7);
                  const yyyy = d.getFullYear();
                  const mm = String(d.getMonth() + 1).padStart(2, '0');
                  const dd = String(d.getDate()).padStart(2, '0');
@@ -259,7 +255,6 @@
             if (!pName.trim()) { showToast("Nama tidak boleh kosong!", "error"); return; }
             
             if (editPlayerId) {
-                // Update mode
                 const updatedPlayers = players.map(p => 
                     p.id === editPlayerId ? { ...p, name: pName.trim(), whatsapp: pWa.trim() || '-', role: pRole, type: pType, fee: parseFloat(pFee) || 0 } : p
                 );
@@ -268,7 +263,6 @@
                 showToast("Data Anggota Diperbarui! ✏️", "success");
                 cancelEdit();
             } else {
-                // Add mode
                 const newPlayer = {
                     id: 'p_' + Date.now(), name: pName.trim(), whatsapp: pWa.trim() || '-', role: pRole, type: pType, fee: parseFloat(pFee) || 0,
                     payments: {"2026-06": false, "2026-07": false}, stats: { played: 0, won: 0, lost: 0 }
@@ -290,7 +284,6 @@
              });
              setPlayers(updated);
              
-             // AUTO UPDATE KAS
              if (!isPaid && player.fee > 0) {
                  const newTx = {
                     id: 't_' + Date.now(), type: 'credit', category: 'iuran', amount: player.fee, 
@@ -328,7 +321,6 @@
              showToast(`Iuran Harian Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
           };
 
-          // Handler Transaksi Manual
           const handleAddTransaction = (e) => {
             e.preventDefault(); const parsedAmount = parseFloat(txAmount);
             if (isNaN(parsedAmount) || parsedAmount <= 0) { showToast("Jumlah tidak valid!", "error"); return; }
@@ -345,7 +337,6 @@
           };
           const handleFileChange = (e) => { if (e.target.files && e.target.files[0]) { setReceiptName(e.target.files[0].name); showToast(`File disiapkan! 📄`, "info"); } };
 
-          // Handler Skor & Histori Match
           const updateScore = (setIndex, team, delta) => {
               const newSets = [...sets];
               newSets[setIndex][team] = Math.max(0, newSets[setIndex][team] + delta);
@@ -387,14 +378,11 @@
           const totalUangKeluar = transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
           const saldoKas = totalUangMasuk - totalUangKeluar;
 
-          // Copy Link & Dynamic WA Message Logic (DIPERBAIKI)
           const getShareUrl = () => {
               const baseUrl = `${window.location.origin}${window.location.pathname}`;
-              // Selalu gunakan state workspaceUrl yang sedang aktif (atau DEFAULT_ROOM jika kosong)
               return `${baseUrl}?workspace=${workspaceUrl || 'DEFAULT_ROOM'}`;
           };
 
-          // Generate Dynamic Text for WA
           const activeSession = sessions[0] || {};
           const rsvps = activeSession.rsvps || {};
           
@@ -460,7 +448,12 @@
                 <div className="max-w-md mx-auto h-16 flex items-center justify-between">
                   <div>
                     <h1 className="text-base font-black text-emerald-400">Badminton Selasa Ceria</h1>
-                    <p className="text-[10px] text-gray-400">Cloud Sync Active | Admin: Handi</p>
+                    <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                      Room: 
+                      <span className="text-emerald-500 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest border border-emerald-500/20">
+                        {workspaceUrl || 'DEFAULT_ROOM'}
+                      </span>
+                    </p>
                   </div>
                   <div className="flex gap-2">
                       <button onClick={copyMessage} className="bg-gray-800 px-3 py-2 rounded-xl text-[10px] font-bold text-gray-300">COPY TEKS</button>
