@@ -387,12 +387,11 @@
           const totalUangKeluar = transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
           const saldoKas = totalUangMasuk - totalUangKeluar;
 
-          // Copy Link & Dynamic WA Message Logic
+          // Copy Link & Dynamic WA Message Logic (DIPERBAIKI)
           const getShareUrl = () => {
-              const currentUrl = window.location.href;
-              return currentUrl.includes('?workspace=') 
-                  ? currentUrl 
-                  : `${window.location.origin}${window.location.pathname}?workspace=badminton-selasa-ceria`;
+              const baseUrl = `${window.location.origin}${window.location.pathname}`;
+              // Selalu gunakan state workspaceUrl yang sedang aktif (atau DEFAULT_ROOM jika kosong)
+              return `${baseUrl}?workspace=${workspaceUrl || 'DEFAULT_ROOM'}`;
           };
 
           // Generate Dynamic Text for WA
