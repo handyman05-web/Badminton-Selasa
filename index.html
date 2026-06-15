@@ -21,7 +21,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        const DEFAULT_APP_ID = 'badminton-selasa-ceria';
+        const DEFAULT_APP_ID = 'badminton-selasa-ceria-v2';
         
         const FALLBACK_FIREBASE_CONFIG = {
           apiKey: "AIzaSyAKWV_5Y9gWh7_Mp33YeTYS-v0kGGO0K0s",
@@ -79,7 +79,7 @@
 
         const loadInitialData = () => {
             // Version v11 agar semua sinkronisasi nama dan fitur Edit/Copy bekerja
-            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v11'); if (local) return JSON.parse(local); } catch (e) {}
+            try { const local = localStorage.getItem('badminton_selasa_ceriadata_v12'); if (local) return JSON.parse(local); } catch (e) {}
             return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS, sessionHistory: [], transactions: INITIAL_TRANSACTIONS, matches: [], tacticalPlayers: INITIAL_TACTICAL, updatedAt: 0 };
         };
 
