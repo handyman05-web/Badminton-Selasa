@@ -22,10 +22,8 @@
         const { useState, useEffect, useRef } = React;
 
         const DEFAULT_APP_ID = 'badminton-selasa-ceria-v2';
-        // Kunci konsisten untuk Local Storage
         const LOCAL_STORAGE_KEY = 'badminton_selasa_ceriadata_v12';
         
-        // FIREBASE CONFIG UPDATED TO "badminton-selasa"
         const FALLBACK_FIREBASE_CONFIG = {
           apiKey: "AIzaSyAKWV_5Y9gWh7_Mp33YeTYS-v0kGGO0K0s",
           authDomain: "badminton-selasa.firebaseapp.com",
@@ -110,7 +108,8 @@
           const [pName, setPName] = useState(''); const [pRole, setPRole] = useState('player'); const [pWa, setPWa] = useState('');
           const [pType, setPType] = useState('monthly'); const [pFee, setPFee] = useState('100000');
 
-          // State Kas
+          // State Kas & Edit Kas
+          const [editTxId, setEditTxId] = useState(null);
           const [txCategory, setTxCategory] = useState('iuran'); const [txType, setTxType] = useState('credit');
           const [txAmount, setTxAmount] = useState(''); const [txDesc, setTxDesc] = useState('');
           const [txMethod, setTxMethod] = useState('manual'); const [receiptName, setReceiptName] = useState('');
@@ -233,7 +232,7 @@
              showToast("Sesi Ditutup! Histori tersimpan & Jadwal baru dibuat 🗓️", "success");
           };
 
-          // Handler Edit Form
+          // Handler Edit Form Anggota
           const handleEditClick = (p) => {
              setEditPlayerId(p.id);
              setPName(p.name);
@@ -321,21 +320,59 @@
              showToast(`Iuran Harian Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
           };
 
+          // --- HANDLER TRANSAKSI KAS (DENGAN FITUR EDIT & HAPUS) ---
           const handleAddTransaction = (e) => {
-            e.preventDefault(); const parsedAmount = parseFloat(txAmount);
+            e.preventDefault(); 
+            const parsedAmount = parseFloat(txAmount);
             if (isNaN(parsedAmount) || parsedAmount <= 0) { showToast("Jumlah tidak valid!", "error"); return; }
-            let type = txType; let finalDesc = txDesc.trim() || (txCategory === 'iuran' ? "Pemasukan: Iuran" : "Transaksi Lainnya");
+            let type = txType; 
+            let finalDesc = txDesc.trim() || (txCategory === 'iuran' ? "Pemasukan: Iuran" : "Transaksi Lainnya");
             if (txCategory === 'sewa' || txCategory === 'shuttlecock') type = 'debit';
 
-            const newTx = {
-                id: 't_' + Date.now(), type, category: txCategory, amount: parsedAmount, description: finalDesc,
-                date: new Date().toISOString().slice(0, 10), note: txMethod === 'upload' ? (receiptName || "Bukti Unggah") : "Input Manual", hasReceipt: txMethod === 'upload'
-            };
-            const updatedTransactions = [newTx, ...transactions]; setTransactions(updatedTransactions);
+            if (editTxId) {
+                // Update mode
+                const updatedTransactions = transactions.map(t => 
+                    t.id === editTxId ? { ...t, type, category: txCategory, amount: parsedAmount, description: finalDesc, note: txMethod === 'upload' ? (receiptName || "Bukti Unggah") : "Input Manual" } : t
+                );
+                setTransactions(updatedTransactions);
+                persistData({ transactions: updatedTransactions }); 
+                showToast("Data Kas Diperbarui! ✏️", "success");
+                setEditTxId(null);
+            } else {
+                // Tambah baru
+                const newTx = {
+                    id: 't_' + Date.now(), type, category: txCategory, amount: parsedAmount, description: finalDesc,
+                    date: new Date().toISOString().slice(0, 10), note: txMethod === 'upload' ? (receiptName || "Bukti Unggah") : "Input Manual", hasReceipt: txMethod === 'upload'
+                };
+                const updatedTransactions = [newTx, ...transactions]; 
+                setTransactions(updatedTransactions);
+                persistData({ transactions: updatedTransactions }); 
+                showToast("Data Kas Disimpan! 💰", "success");
+            }
+
             setTxAmount(''); setTxDesc(''); setReceiptName(''); setTxMethod('manual');
-            persistData({ transactions: updatedTransactions }); showToast("Data Kas Disimpan! 💰", "success");
           };
+
+          const handleEditTransaction = (t) => {
+              setEditTxId(t.id);
+              setTxCategory(t.category);
+              setTxType(t.type);
+              setTxAmount(t.amount.toString());
+              setTxDesc(t.description);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+          };
+
+          const handleDeleteTransaction = (id) => {
+              if (window.confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) {
+                  const updatedTransactions = transactions.filter(t => t.id !== id);
+                  setTransactions(updatedTransactions);
+                  persistData({ transactions: updatedTransactions });
+                  showToast("Transaksi Dihapus! 🗑️", "info");
+              }
+          };
+
           const handleFileChange = (e) => { if (e.target.files && e.target.files[0]) { setReceiptName(e.target.files[0].name); showToast(`File disiapkan! 📄`, "info"); } };
+          // --------------------------------------------------------
 
           const updateScore = (setIndex, team, delta) => {
               const newSets = [...sets];
@@ -722,7 +759,7 @@
                   </div>
                 )}
 
-                {/* 4. TAB KEUANGAN */}
+                {/* 4. TAB KEUANGAN (DENGAN FITUR EDIT & HAPUS) */}
                 {activeTab === 'ledger' && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3 mb-2">
@@ -737,7 +774,9 @@
                     </div>
 
                     <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
-                      <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">➕ Mutasi Keuangan Baru</h3>
+                      <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">
+                          {editTxId ? "✏️ Edit Transaksi" : "➕ Mutasi Keuangan Baru"}
+                      </h3>
                       <form onSubmit={handleAddTransaction} className="space-y-3">
                         <select value={txCategory} onChange={(e) => { setTxCategory(e.target.value); if(e.target.value==='iuran') setTxType('credit'); else if(e.target.value==='sewa'||e.target.value==='shuttlecock') setTxType('debit'); }} className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs rounded-xl text-white">
                             <option value="iuran">💰 Pemasukan (Iuran Player)</option><option value="sewa">🏢 Pengeluaran (Sewa Lapangan)</option>
@@ -750,7 +789,17 @@
                             <div className="flex gap-4 text-xs"><label><input type="radio" checked={txMethod==='manual'} onChange={()=>setTxMethod('manual')} className="mr-1"/>Manual</label><label><input type="radio" checked={txMethod==='upload'} onChange={()=>setTxMethod('upload')} className="mr-1"/>Upload Slip</label></div>
                             {txMethod === 'upload' && (<input type="file" onChange={handleFileChange} className="mt-2 text-[10px] w-full text-emerald-400" />)}
                         </div>
-                        <button type="submit" className="w-full py-2.5 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl">Simpan Transaksi 💾</button>
+                        
+                        <div className="flex gap-2">
+                            <button type="submit" className={`flex-1 py-2.5 font-black text-xs rounded-xl ${editTxId ? 'bg-yellow-500 text-gray-950' : 'bg-emerald-500 text-gray-950'}`}>
+                                {editTxId ? "Update Data 💾" : "Simpan Transaksi 💾"}
+                            </button>
+                            {editTxId && (
+                                <button type="button" onClick={() => { setEditTxId(null); setTxAmount(''); setTxDesc(''); setTxCategory('iuran'); setTxType('credit'); }} className="flex-1 bg-gray-700 text-white text-xs font-black rounded-xl">
+                                    Batal Edit
+                                </button>
+                            )}
+                        </div>
                       </form>
                     </div>
 
@@ -761,9 +810,17 @@
                             <span className="text-xs font-bold text-white block">{t.description} {t.hasReceipt && "📄"}</span>
                             <span className="text-[9px] text-gray-500">{t.date} | {t.note}</span>
                           </div>
-                          <span className={`text-xs font-black ${t.type === 'credit' ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {t.type === 'credit' ? '+' : '-'} Rp {t.amount.toLocaleString('id-ID')}
-                          </span>
+                          
+                          <div className="flex items-center gap-3">
+                              <span className={`text-xs font-black ${t.type === 'credit' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {t.type === 'credit' ? '+' : '-'} Rp {t.amount.toLocaleString('id-ID')}
+                              </span>
+                              
+                              <div className="flex gap-1">
+                                  <button onClick={() => handleEditTransaction(t)} className="bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-[10px]" title="Edit">✏️</button>
+                                  <button onClick={() => handleDeleteTransaction(t.id)} className="bg-red-900 hover:bg-red-800 px-2 py-1 rounded text-[10px]" title="Hapus">❌</button>
+                              </div>
+                          </div>
                         </div>
                       ))}
                     </div>
