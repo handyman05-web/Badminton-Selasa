@@ -22,7 +22,7 @@
         const { useState, useEffect, useRef } = React;
 
         const DEFAULT_APP_ID = 'badminton-selasa-ceria-v2';
-        const LOCAL_STORAGE_KEY = 'badminton_selasa_ceriadata_v13'; // Bump ke v13 untuk refresh UI
+        const LOCAL_STORAGE_KEY = 'badminton_selasa_ceriadata_v14'; // Bump ke v14 agar paksa refresh data dan layout
         
         const FALLBACK_FIREBASE_CONFIG = {
           apiKey: "AIzaSyAKWV_5Y9gWh7_Mp33YeTYS-v0kGGO0K0s",
@@ -41,12 +41,12 @@
         const auth = window.firebase.auth();
         const db = window.firebase.firestore();
 
-        // --- DATA AWAL ---
+        // --- DATA AWAL (NAMA LENGKAP & WHATSAPP) ---
         const INITIAL_PLAYERS = [
           { "id": "p1", "name": "Pak dr. Husni Lubis", "whatsapp": "+62 852-7091-9961", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p2", "name": "Lae Agustin Tampubolon", "whatsapp": "+62 812-6174-782", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p3", "name": "Lae Handi", "whatsapp": "08556587299", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
-          { "id": "p4", "name": "Lae Juntak", "whatsapp": "+62 813-6481-2304", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p2", "name": "Agustin Tampubolon", "whatsapp": "+62 812-6174-782", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p3", "name": "Handi Muliawan", "whatsapp": "08556587299", "role": "admin", "type": "monthly", "fee": 150000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
+          { "id": "p4", "name": "Dominique Simanjuntak", "whatsapp": "+62 813-6481-2304", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p5", "name": "Lae Pakpahan", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p6", "name": "Uda", "whatsapp": "-", "role": "player", "type": "monthly", "fee": 50000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p11", "name": "Jispen Siahaan", "whatsapp": "+62 811-6665-235", "role": "player", "type": "monthly", "fee": 0, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
@@ -293,42 +293,58 @@
              const updatedTransactions = [newTx, ...transactions]; setTransactions(updatedTransactions); persistData({ transactions: updatedTransactions }); showToast(`Iuran Harian Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
           };
 
-          // Handler Transaksi Keuangan
+          // --- HANDLER TRANSAKSI KAS (DENGAN FITUR EDIT & HAPUS) ---
           const handleAddTransaction = (e) => {
-            e.preventDefault(); const parsedAmount = parseFloat(txAmount);
+            e.preventDefault(); 
+            const parsedAmount = parseFloat(txAmount);
             if (isNaN(parsedAmount) || parsedAmount <= 0) { showToast("Jumlah tidak valid!", "error"); return; }
-            let type = txType; let finalDesc = txDesc.trim() || (txCategory === 'iuran' ? "Pemasukan: Iuran" : "Transaksi Lainnya");
+            let type = txType; 
+            let finalDesc = txDesc.trim() || (txCategory === 'iuran' ? "Pemasukan: Iuran" : "Transaksi Lainnya");
             if (txCategory === 'sewa' || txCategory === 'shuttlecock') type = 'debit';
 
             if (editTxId) {
                 const updatedTransactions = transactions.map(t => 
                     t.id === editTxId ? { ...t, type, category: txCategory, amount: parsedAmount, description: finalDesc, note: txMethod === 'upload' ? (receiptName || "Bukti Unggah") : "Input Manual" } : t
                 );
-                setTransactions(updatedTransactions); persistData({ transactions: updatedTransactions }); showToast("Data Kas Diperbarui! ✏️", "success"); setEditTxId(null);
+                setTransactions(updatedTransactions);
+                persistData({ transactions: updatedTransactions }); 
+                showToast("Data Kas Diperbarui! ✏️", "success");
+                setEditTxId(null);
             } else {
                 const newTx = {
                     id: 't_' + Date.now(), type, category: txCategory, amount: parsedAmount, description: finalDesc,
                     date: new Date().toISOString().slice(0, 10), note: txMethod === 'upload' ? (receiptName || "Bukti Unggah") : "Input Manual", hasReceipt: txMethod === 'upload'
                 };
-                const updatedTransactions = [newTx, ...transactions]; setTransactions(updatedTransactions); persistData({ transactions: updatedTransactions }); showToast("Data Kas Disimpan! 💰", "success");
+                const updatedTransactions = [newTx, ...transactions]; 
+                setTransactions(updatedTransactions);
+                persistData({ transactions: updatedTransactions }); 
+                showToast("Data Kas Disimpan! 💰", "success");
             }
+
             setTxAmount(''); setTxDesc(''); setReceiptName(''); setTxMethod('manual');
           };
 
           const handleEditTransaction = (t) => {
-              setEditTxId(t.id); setTxCategory(t.category); setTxType(t.type); setTxAmount(t.amount.toString()); setTxDesc(t.description); window.scrollTo({ top: 0, behavior: 'smooth' });
+              setEditTxId(t.id);
+              setTxCategory(t.category);
+              setTxType(t.type);
+              setTxAmount(t.amount.toString());
+              setTxDesc(t.description);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
           };
 
           const handleDeleteTransaction = (id) => {
               if (window.confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) {
                   const updatedTransactions = transactions.filter(t => t.id !== id);
-                  setTransactions(updatedTransactions); persistData({ transactions: updatedTransactions }); showToast("Transaksi Dihapus! 🗑️", "info");
+                  setTransactions(updatedTransactions);
+                  persistData({ transactions: updatedTransactions });
+                  showToast("Transaksi Dihapus! 🗑️", "info");
               }
           };
 
           const handleFileChange = (e) => { if (e.target.files && e.target.files[0]) { setReceiptName(e.target.files[0].name); showToast(`File disiapkan! 📄`, "info"); } };
+          // --------------------------------------------------------
 
-          // Handler Match
           const updateScore = (setIndex, team, delta) => {
               const newSets = [...sets]; newSets[setIndex][team] = Math.max(0, newSets[setIndex][team] + delta); setSets(newSets);
           };
@@ -362,7 +378,6 @@
           const totalUangKeluar = transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
           const saldoKas = totalUangMasuk - totalUangKeluar;
 
-          // Copy URL & WA
           const getShareUrl = () => {
               const baseUrl = `${window.location.origin}${window.location.pathname}`;
               return `${baseUrl}?workspace=${workspaceUrl || 'DEFAULT_ROOM'}`;
@@ -428,7 +443,6 @@
                 {/* 1. TAB RSVP */}
                 {activeTab === 'dashboard' && (
                   <div className="space-y-4">
-                    {/* Grid untuk Sesi: Di HP 1 kolom, di PC 2/3 kolom */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {sessions.map(s => {
                         const hadirCount = Object.values(s.rsvps || {}).filter(status => status === 'YES').length;
@@ -468,7 +482,6 @@
                         })}
                     </div>
 
-                    {/* HISTORY LOG */}
                     {sessionHistory.length > 0 && (
                         <div className="pt-4">
                             <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">📜 Histori Kehadiran Sesi</h3>
@@ -488,8 +501,6 @@
                 {/* 2. TAB ANGGOTA & IURAN (Desktop side-by-side) */}
                 {activeTab === 'players' && (
                   <div className="flex flex-col md:flex-row gap-4 items-start">
-                    
-                    {/* FORM ANGGOTA (Kiri di PC) */}
                     <div className="w-full md:w-1/3 bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl md:sticky md:top-20">
                         <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">
                             {editPlayerId ? "✏️ Edit Anggota" : "➕ Tambah Anggota"}
@@ -509,7 +520,6 @@
                         </form>
                     </div>
 
-                    {/* DAFTAR ANGGOTA (Kanan di PC) */}
                     <div className="w-full md:w-2/3 space-y-4">
                         <div className="bg-gray-900 border border-gray-800 rounded-3xl shadow-xl overflow-hidden">
                         <div className="p-4 border-b border-gray-800 bg-gray-900/50">
@@ -576,7 +586,6 @@
                 {/* 3. TAB MATCH (Desktop side-by-side) */}
                 {activeTab === 'matchmaker' && (
                   <div className="flex flex-col md:flex-row gap-4 items-start">
-                    {/* SCORING (Kiri di PC) */}
                     <div className="w-full md:w-1/2 bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl md:sticky md:top-20">
                         <h3 className="text-sm font-black text-emerald-400 mb-4 text-center uppercase tracking-widest border-b border-gray-800 pb-3">🔥 Skor Match (Best of 3)</h3>
                         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -603,7 +612,6 @@
                         <button onClick={handleSaveMatch} className="w-full mt-4 py-3 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl">💾 Simpan Hasil & Update Stats</button>
                     </div>
 
-                    {/* HISTORY MATCH (Kanan di PC) */}
                     <div className="w-full md:w-1/2 bg-gray-900 border border-gray-800 p-4 rounded-3xl shadow-xl">
                         <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">📋 Histori Match</h3>
                         <div className="space-y-3 max-h-[400px] overflow-y-auto">
@@ -623,7 +631,7 @@
                   </div>
                 )}
 
-                {/* 4. TAB KEUANGAN / LEDGER (Desktop side-by-side) */}
+                {/* 4. TAB KEUANGAN / LEDGER (Desktop side-by-side dengan Edit & Hapus) */}
                 {activeTab === 'ledger' && (
                   <div className="flex flex-col md:flex-row gap-4 items-start">
                     
