@@ -22,10 +22,8 @@
         const { useState, useEffect, useRef } = React;
 
         const DEFAULT_APP_ID = 'badminton-selasa-ceria-v2';
-        // Kunci konsisten untuk Local Storage - dinaikkan ke v16 untuk refresh UI PC
-        const LOCAL_STORAGE_KEY = 'badminton_selasa_ceriadata_v16';
+        const LOCAL_STORAGE_KEY = 'badminton_selasa_ceriadata_v19'; // Bump ke v19
         
-        // FIREBASE CONFIG UPDATED TO "badminton-selasa"
         const FALLBACK_FIREBASE_CONFIG = {
           apiKey: "AIzaSyAKWV_5Y9gWh7_Mp33YeTYS-v0kGGO0K0s",
           authDomain: "badminton-selasa.firebaseapp.com",
@@ -43,7 +41,7 @@
         const auth = window.firebase.auth();
         const db = window.firebase.firestore();
 
-        // --- DATA AWAL ---
+        // --- DATA AWAL PEMAIN ---
         const INITIAL_PLAYERS = [
           { "id": "p1", "name": "Pak dr. Husni Lubis", "whatsapp": "+62 852-7091-9961", "role": "player", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
           { "id": "p2", "name": "Lae Agustin Tampubolon", "whatsapp": "+62 812-6174-782", "role": "admin", "type": "monthly", "fee": 100000, "payments": {"2026-06": true, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } },
@@ -73,6 +71,28 @@
           { "id": "s1", "date": todayStr, "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "time": "19:00 - 21:00", "isClosed": false, "rsvps": {} }
         ];
 
+        // --- DATA SIMULASI HISTORI ---
+        const INITIAL_SESSION_HISTORY = [
+          {
+            "id": "s_hist_1",
+            "date": "2026-06-16",
+            "day": "Selasa",
+            "location": "Sport Hill Arena, Batam",
+            "court": "Court 10",
+            "isClosed": true,
+            "attendees": ["Lae Handi", "Lae Agustin Tampubolon", "Lae Juntak", "Pak dr. Husni Lubis", "Jispen Siahaan"]
+          },
+          {
+            "id": "s_hist_2",
+            "date": "2026-06-23",
+            "day": "Selasa",
+            "location": "Sport Hill Arena, Batam",
+            "court": "Court 10",
+            "isClosed": true,
+            "attendees": ["Lae Handi", "Lae Agustin Tampubolon", "Jispen Siahaan", "Eding Sembiring", "Alex Sibarani"]
+          }
+        ];
+
         const INITIAL_TACTICAL = [
             { id: 'tp1', label: 'T1-A', x: 75, y: 150, color: '#3B82F6' },
             { id: 'tp2', label: 'T1-B', x: 75, y: 250, color: '#3B82F6' },
@@ -84,10 +104,8 @@
             try { 
               const local = localStorage.getItem(LOCAL_STORAGE_KEY); 
               if (local) return JSON.parse(local); 
-            } catch (e) {
-              console.error("Gagal load data lokal", e);
-            }
-            return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS, sessionHistory: [], transactions: INITIAL_TRANSACTIONS, matches: [], tacticalPlayers: INITIAL_TACTICAL, updatedAt: 0 };
+            } catch (e) { console.error("Gagal load data lokal", e); }
+            return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS, sessionHistory: INITIAL_SESSION_HISTORY, transactions: INITIAL_TRANSACTIONS, matches: [], tacticalPlayers: INITIAL_TACTICAL, updatedAt: 0 };
         };
 
         function App() {
@@ -105,7 +123,7 @@
           const localUpdatedAt = useRef(initialData.updatedAt || 0);
           const canvasRef = useRef(null);
 
-          // State Anggota & Edit Anggota
+          // State Anggota
           const [editPlayerId, setEditPlayerId] = useState(null);
           const [pName, setPName] = useState(''); const [pRole, setPRole] = useState('player'); const [pWa, setPWa] = useState('');
           const [pType, setPType] = useState('monthly'); const [pFee, setPFee] = useState('100000');
@@ -201,14 +219,17 @@
               setSessions(updated); persistData({ sessions: updated });
           };
 
+          // SAAT SESI DITUTUP -> PINDAHKAN YANG HADIR KE HISTORI
           const handleCloseSession = (sessionId) => {
              const session = sessions.find(s => s.id === sessionId);
              if(!session) return;
              
+             // Tarik nama-nama yang hadir ("YES")
              const attendees = Object.keys(session.rsvps).filter(uid => session.rsvps[uid] === 'YES').map(uid => players.find(p=>p.id===uid)?.name).filter(Boolean);
              const historyLog = { ...session, isClosed: true, attendees };
              const newHistory = [historyLog, ...sessionHistory];
              
+             // Siapkan sesi minggu depan
              let nextDateStr = "";
              const parts = session.date.split('-');
              if (parts.length === 3) {
@@ -234,11 +255,11 @@
              showToast("Sesi Ditutup! Histori tersimpan & Jadwal baru dibuat 🗓️", "success");
           };
 
-          // LOGIKA STATISTIK KEHADIRAN (FITUR BARU)
+          // --- LOGIKA STATISTIK KEHADIRAN (HANYA DARI HISTORI SESI LALU) ---
           const getAttendanceStats = () => {
               let stats = players.map(p => ({ id: p.id, name: p.name, count: 0 }));
               
-              // Hitung dari history
+              // Hanya Hitung dari histori minggu-minggu lalu yang sudah ditutup
               sessionHistory.forEach(hs => {
                   if (hs.attendees) {
                       hs.attendees.forEach(attName => {
@@ -248,34 +269,18 @@
                   }
               });
               
-              // Hitung dari sesi saat ini yang sedang berjalan
-              sessions.forEach(s => {
-                  Object.keys(s.rsvps || {}).forEach(pid => {
-                      if (s.rsvps[pid] === 'YES') {
-                          const pStat = stats.find(st => st.id === pid);
-                          if (pStat) pStat.count += 1;
-                      }
-                  });
-              });
-              
-              // Sort descending (terbanyak di atas)
+              // Urutkan dari terbanyak hadir
               return stats.sort((a, b) => b.count - a.count);
           };
 
           // Handler Edit Form Anggota
           const handleEditClick = (p) => {
-             setEditPlayerId(p.id);
-             setPName(p.name);
-             setPWa(p.whatsapp || '');
-             setPRole(p.role);
-             setPType(p.type);
-             setPFee(p.fee.toString());
+             setEditPlayerId(p.id); setPName(p.name); setPWa(p.whatsapp || ''); setPRole(p.role); setPType(p.type); setPFee(p.fee.toString());
              window.scrollTo({ top: 0, behavior: 'smooth' });
           };
 
           const cancelEdit = () => {
-             setEditPlayerId(null);
-             setPName(''); setPWa(''); setPRole('player'); setPType('monthly'); setPFee('100000');
+             setEditPlayerId(null); setPName(''); setPWa(''); setPRole('player'); setPType('monthly'); setPFee('100000');
           };
 
           const handleAddPlayer = (e) => {
@@ -286,19 +291,13 @@
                 const updatedPlayers = players.map(p => 
                     p.id === editPlayerId ? { ...p, name: pName.trim(), whatsapp: pWa.trim() || '-', role: pRole, type: pType, fee: parseFloat(pFee) || 0 } : p
                 );
-                setPlayers(updatedPlayers);
-                persistData({ players: updatedPlayers });
-                showToast("Data Anggota Diperbarui! ✏️", "success");
-                cancelEdit();
+                setPlayers(updatedPlayers); persistData({ players: updatedPlayers }); showToast("Data Anggota Diperbarui! ✏️", "success"); cancelEdit();
             } else {
                 const newPlayer = {
                     id: 'p_' + Date.now(), name: pName.trim(), whatsapp: pWa.trim() || '-', role: pRole, type: pType, fee: parseFloat(pFee) || 0,
                     payments: {"2026-06": false, "2026-07": false}, stats: { played: 0, won: 0, lost: 0 }
                 };
-                const updatedPlayers = [...players, newPlayer]; setPlayers(updatedPlayers);
-                persistData({ players: updatedPlayers });
-                showToast("Anggota Baru Terdaftar! 👥", "success");
-                cancelEdit();
+                const updatedPlayers = [...players, newPlayer]; setPlayers(updatedPlayers); persistData({ players: updatedPlayers }); showToast("Anggota Baru Terdaftar! 👥", "success"); cancelEdit();
             }
           };
 
@@ -319,37 +318,25 @@
                     date: new Date().toISOString().slice(0, 10), note: "Auto-Sync Roster", hasReceipt: false
                  };
                  const updatedTransactions = [newTx, ...transactions];
-                 setTransactions(updatedTransactions);
-                 persistData({ players: updated, transactions: updatedTransactions });
-                 showToast(`LUNAS! Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
+                 setTransactions(updatedTransactions); persistData({ players: updated, transactions: updatedTransactions }); showToast(`LUNAS! Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
              } else {
                  persistData({ players: updated });
-                 if(!isPaid && player.fee === 0) {
-                     showToast("Status Lunas. (Fee Rp 0, Kas tidak berubah) ✅", "success");
-                 } else {
-                     showToast("Status diubah ke Belum Lunas. (Cek Kas Manual) ❌", "info");
-                 }
+                 if(!isPaid && player.fee === 0) { showToast("Status Lunas. (Fee Rp 0, Kas tidak berubah) ✅", "success"); } else { showToast("Status diubah ke Belum Lunas. (Cek Kas Manual) ❌", "info"); }
              }
           };
 
           const payPerPlay = (playerId) => {
              const player = players.find(p => p.id === playerId);
-             if (player.fee <= 0) {
-                showToast("Fee per play pemain ini adalah Rp 0.", "info");
-                return;
-             }
+             if (player.fee <= 0) { showToast("Fee per play pemain ini adalah Rp 0.", "info"); return; }
              const newTx = {
                   id: 't_' + Date.now(), type: 'credit', category: 'iuran', amount: player.fee, 
                   description: `Iuran Harian - ${player.name}`,
                   date: new Date().toISOString().slice(0, 10), note: "Auto-Sync Roster", hasReceipt: false
              };
-             const updatedTransactions = [newTx, ...transactions];
-             setTransactions(updatedTransactions);
-             persistData({ transactions: updatedTransactions });
-             showToast(`Iuran Harian Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
+             const updatedTransactions = [newTx, ...transactions]; setTransactions(updatedTransactions); persistData({ transactions: updatedTransactions }); showToast(`Iuran Harian Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
           };
 
-          // Handler Transaksi Keuangan dengan Fitur Edit
+          // --- HANDLER TRANSAKSI KAS (FITUR EDIT & HAPUS) ---
           const handleAddTransaction = (e) => {
             e.preventDefault(); const parsedAmount = parseFloat(txAmount);
             if (isNaN(parsedAmount) || parsedAmount <= 0) { showToast("Jumlah tidak valid!", "error"); return; }
@@ -360,50 +347,38 @@
                 const updatedTransactions = transactions.map(t => 
                     t.id === editTxId ? { ...t, type, category: txCategory, amount: parsedAmount, description: finalDesc, note: txMethod === 'upload' ? (receiptName || "Bukti Unggah") : "Input Manual" } : t
                 );
-                setTransactions(updatedTransactions);
-                persistData({ transactions: updatedTransactions });
-                showToast("Data Kas Diperbarui! ✏️", "success");
+                setTransactions(updatedTransactions); persistData({ transactions: updatedTransactions }); showToast("Data Kas Diperbarui! ✏️", "success");
                 setEditTxId(null);
             } else {
                 const newTx = {
                     id: 't_' + Date.now(), type, category: txCategory, amount: parsedAmount, description: finalDesc,
                     date: new Date().toISOString().slice(0, 10), note: txMethod === 'upload' ? (receiptName || "Bukti Unggah") : "Input Manual", hasReceipt: txMethod === 'upload'
                 };
-                const updatedTransactions = [newTx, ...transactions]; 
-                setTransactions(updatedTransactions);
-                persistData({ transactions: updatedTransactions }); 
-                showToast("Data Kas Disimpan! 💰", "success");
+                const updatedTransactions = [newTx, ...transactions]; setTransactions(updatedTransactions); persistData({ transactions: updatedTransactions }); showToast("Data Kas Disimpan! 💰", "success");
             }
-            
             setTxAmount(''); setTxDesc(''); setReceiptName(''); setTxMethod('manual');
           };
 
           const handleEditTransaction = (t) => {
-              setEditTxId(t.id); setTxCategory(t.category); setTxType(t.type); setTxAmount(t.amount.toString()); setTxDesc(t.description); 
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              setEditTxId(t.id); setTxCategory(t.category); setTxType(t.type); setTxAmount(t.amount.toString()); setTxDesc(t.description); window.scrollTo({ top: 0, behavior: 'smooth' });
           };
 
           const handleDeleteTransaction = (id) => {
               if (window.confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) {
                   const updatedTransactions = transactions.filter(t => t.id !== id);
-                  setTransactions(updatedTransactions);
-                  persistData({ transactions: updatedTransactions });
-                  showToast("Transaksi Dihapus! 🗑️", "info");
+                  setTransactions(updatedTransactions); persistData({ transactions: updatedTransactions }); showToast("Transaksi Dihapus! 🗑️", "info");
               }
           };
 
           const handleFileChange = (e) => { if (e.target.files && e.target.files[0]) { setReceiptName(e.target.files[0].name); showToast(`File disiapkan! 📄`, "info"); } };
 
           const updateScore = (setIndex, team, delta) => {
-              const newSets = [...sets];
-              newSets[setIndex][team] = Math.max(0, newSets[setIndex][team] + delta);
-              setSets(newSets);
+              const newSets = [...sets]; newSets[setIndex][team] = Math.max(0, newSets[setIndex][team] + delta); setSets(newSets);
           };
 
           const handleSaveMatch = () => {
               if (!teamA[0] || !teamB[0]) { showToast("Pilih 1 pemain ditiap tim!", "error"); return; }
-              let winsA = 0; let winsB = 0;
-              sets.forEach(s => { if (s.a > s.b) winsA++; else if (s.b > s.a) winsB++; });
+              let winsA = 0; let winsB = 0; sets.forEach(s => { if (s.a > s.b) winsA++; else if (s.b > s.a) winsB++; });
               if (winsA === 0 && winsB === 0) { showToast("Skor masih kosong!", "error"); return; }
 
               const isTeamAWinner = winsA > winsB;
@@ -411,9 +386,7 @@
                  let isPlaying = false; let isWinner = false;
                  if (teamA.includes(p.id)) { isPlaying = true; isWinner = isTeamAWinner; }
                  if (teamB.includes(p.id)) { isPlaying = true; isWinner = !isTeamAWinner; }
-                 if (isPlaying) {
-                     return { ...p, stats: { played: (p.stats?.played || 0) + 1, won: (p.stats?.won || 0) + (isWinner ? 1 : 0), lost: (p.stats?.lost || 0) + (!isWinner ? 1 : 0) } };
-                 }
+                 if (isPlaying) { return { ...p, stats: { played: (p.stats?.played || 0) + 1, won: (p.stats?.won || 0) + (isWinner ? 1 : 0), lost: (p.stats?.lost || 0) + (!isWinner ? 1 : 0) } }; }
                  return p;
               });
 
@@ -424,11 +397,8 @@
                   sets: [...sets], winner: isTeamAWinner ? 'A' : (winsB > winsA ? 'B' : 'Draw')
               };
 
-              const updatedMatches = [newMatchLog, ...matches];
-              setPlayers(updatedPlayers); setMatches(updatedMatches);
-              persistData({ players: updatedPlayers, matches: updatedMatches });
-              setSets([{a:0, b:0}, {a:0, b:0}, {a:0, b:0}]); setTeamA(['', '']); setTeamB(['', '']);
-              showToast("Match Tersimpan! Statistik diupdate 🏆", "success");
+              const updatedMatches = [newMatchLog, ...matches]; setPlayers(updatedPlayers); setMatches(updatedMatches); persistData({ players: updatedPlayers, matches: updatedMatches });
+              setSets([{a:0, b:0}, {a:0, b:0}, {a:0, b:0}]); setTeamA(['', '']); setTeamB(['', '']); showToast("Match Tersimpan! Statistik diupdate 🏆", "success");
           };
 
           const totalUangMasuk = transactions.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0);
@@ -448,43 +418,16 @@
           const maybe = players.filter(p => rsvps[p.id] === 'MAYBE');
           const notVoted = players.filter(p => !rsvps[p.id] || rsvps[p.id] === 'NO_RESPONSE');
 
-          let waText = `🏸 *JADWAL BADMINTON SELASA CERIA* 🏸\n\n`;
-          waText += `📍 *Lokasi:* ${activeSession.location || 'Arena'} (${activeSession.court || ''})\n`;
-          waText += `🗓️ *Tanggal:* ${activeSession.date || ''}\n\n`;
-          
-          waText += `✅ *Hadir (${attending.length}):*\n`;
-          if (attending.length > 0) {
-              attending.forEach((p, i) => waText += `${i + 1}. ${p.name}\n`);
-          } else {
-              waText += `- Belum ada -\n`;
-          }
-
-          if (maybe.length > 0) {
-              waText += `\n❓ *Ragu/Menyusul (${maybe.length}):*\n`;
-              maybe.forEach((p, i) => waText += `${i + 1}. ${p.name}\n`);
-          }
-
-          if (absent.length > 0) {
-              waText += `\n❌ *Absen (${absent.length}):*\n`;
-              absent.forEach((p, i) => waText += `${i + 1}. ${p.name}\n`);
-          }
-
+          let waText = `🏸 *JADWAL BADMINTON SELASA CERIA* 🏸\n\n📍 *Lokasi:* ${activeSession.location || 'Arena'} (${activeSession.court || ''})\n🗓️ *Tanggal:* ${activeSession.date || ''}\n\n✅ *Hadir (${attending.length}):*\n`;
+          if (attending.length > 0) { attending.forEach((p, i) => waText += `${i + 1}. ${p.name}\n`); } else { waText += `- Belum ada -\n`; }
+          if (maybe.length > 0) { waText += `\n❓ *Ragu/Menyusul (${maybe.length}):*\n`; maybe.forEach((p, i) => waText += `${i + 1}. ${p.name}\n`); }
+          if (absent.length > 0) { waText += `\n❌ *Absen (${absent.length}):*\n`; absent.forEach((p, i) => waText += `${i + 1}. ${p.name}\n`); }
           waText += `\n⏳ *Belum Konfirmasi (${notVoted.length}):*\n`;
-          if (notVoted.length > 0) {
-              notVoted.forEach(p => waText += `- ${p.name}\n`);
-          } else {
-              waText += `- Semua sudah konfirmasi -\n`;
-          }
-
-          waText += `\n👉 *Update absensi & statistik di sini:*\n${getShareUrl()}\n\n`;
-          waText += `Mohon segera konfirmasi kehadirannya ya saudaraku! 🙏`;
+          if (notVoted.length > 0) { notVoted.forEach(p => waText += `- ${p.name}\n`); } else { waText += `- Semua sudah konfirmasi -\n`; }
+          waText += `\n👉 *Update absensi & statistik di sini:*\n${getShareUrl()}\n\nMohon segera konfirmasi kehadirannya ya saudaraku! 🙏`;
 
           const waMessageEncoded = encodeURIComponent(waText);
-
-          const copyMessage = () => {
-              navigator.clipboard.writeText(waText);
-              showToast("Jadwal & Teks Absensi disalin ke clipboard! 📋", "success");
-          };
+          const copyMessage = () => { navigator.clipboard.writeText(waText); showToast("Jadwal & Teks Absensi disalin ke clipboard! 📋", "success"); };
 
           return (
             <div className="min-h-screen bg-gray-950 text-gray-100 font-sans antialiased pb-20">
@@ -522,8 +465,8 @@
 
               {/* NAVIGASI RESPONSIVE */}
               <nav className="max-w-md md:max-w-4xl lg:max-w-6xl mx-auto px-4 my-4 overflow-x-auto no-scrollbar">
-                <div className="bg-gray-900 p-1 rounded-2xl flex gap-1 min-w-max lg:justify-center">
-                  <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'dashboard' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>🗓️ Jadwal</button>
+                <div className="bg-gray-900 p-1 rounded-2xl flex gap-1 min-w-max md:justify-center">
+                  <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'dashboard' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>🗓️ Jadwal & Statistik</button>
                   <button onClick={() => setActiveTab('players')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'players' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>👥 Anggota</button>
                   <button onClick={() => setActiveTab('matchmaker')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'matchmaker' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>🔥 Match</button>
                   <button onClick={() => setActiveTab('ledger')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'ledger' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>💰 Kas</button>
@@ -587,14 +530,14 @@
                             })}
                             </div>
                             
-                            <button onClick={() => handleCloseSession(s.id)} className="w-full mt-4 py-3 bg-red-950/50 hover:bg-red-900 border border-red-800 text-red-400 text-xs font-black rounded-xl">
+                            <button onClick={() => handleCloseSession(s.id)} className="w-full mt-4 py-3 bg-red-950/50 hover:bg-red-900 border border-red-800 text-red-400 text-xs font-black rounded-xl transition">
                                 🔒 Tutup Sesi & Buat Sesi Minggu Depan
                             </button>
                         </div>
                         )
                         })}
 
-                        {/* HISTORY LOG */}
+                        {/* HISTORY LOG (Bawah Kiri) */}
                         {sessionHistory.length > 0 && (
                             <div className="pt-4">
                                 <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">📜 Histori Kehadiran Sesi</h3>
@@ -615,25 +558,28 @@
                         )}
                     </div>
 
-                    {/* KANAN: STATISTIK KEHADIRAN */}
+                    {/* BAGIAN KANAN: STATISTIK KEHADIRAN (HANYA DARI HISTORI) */}
                     <div className="w-full lg:w-1/3 space-y-4 lg:sticky lg:top-24">
                         <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
                             <h3 className="text-xs font-black text-emerald-400 mb-4 uppercase tracking-wider flex items-center justify-between">
                                 <span>📈 Statistik Kehadiran</span>
-                                <span className="bg-emerald-900/50 text-emerald-400 px-2 py-0.5 rounded text-[8px]">Semua Sesi</span>
+                                <span className="bg-emerald-900/50 text-emerald-400 px-2 py-0.5 rounded text-[8px]">Histori Sesi</span>
                             </h3>
                             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                                {getAttendanceStats().map((stat, idx) => (
-                                    <div key={stat.id} className="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
-                                        <div className="flex items-center gap-3">
-                                            <span className={`w-5 text-center text-xs font-black ${idx < 3 ? 'text-yellow-500' : 'text-gray-600'}`}>#{idx + 1}</span>
-                                            <span className="text-xs font-bold text-white">{stat.name}</span>
+                                {getAttendanceStats().map((stat, idx) => {
+                                    if(stat.count === 0) return null; // Sembunyikan yang belum pernah hadir
+                                    return (
+                                        <div key={stat.id} className="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+                                            <div className="flex items-center gap-3">
+                                                <span className={`w-5 text-center text-xs font-black ${idx < 3 ? 'text-yellow-500' : 'text-gray-600'}`}>#{idx + 1}</span>
+                                                <span className="text-xs font-bold text-white">{stat.name}</span>
+                                            </div>
+                                            <span className="text-[10px] font-black bg-gray-800 text-gray-300 px-2 py-1 rounded-lg">
+                                                {stat.count}x Hadir
+                                            </span>
                                         </div>
-                                        <span className="text-[10px] font-black bg-gray-800 text-gray-300 px-2 py-1 rounded-lg">
-                                            {stat.count}x Hadir
-                                        </span>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </div>
                     </div>
@@ -645,7 +591,7 @@
                 {activeTab === 'players' && (
                   <div className="flex flex-col md:flex-row gap-6 items-start">
                     
-                    {/* KIRI: FORM */}
+                    {/* KIRI: FORM EDIT */}
                     <div className="w-full md:w-1/3 bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl md:sticky md:top-24">
                         <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">
                             {editPlayerId ? "✏️ Edit Anggota" : "➕ Tambah Anggota"}
@@ -672,81 +618,81 @@
                         </form>
                     </div>
 
-                    {/* KANAN: TABEL */}
+                    {/* KANAN: LIST ANGGOTA */}
                     <div className="w-full md:w-2/3 space-y-4">
                         <div className="bg-gray-900 border border-gray-800 rounded-3xl shadow-xl overflow-hidden">
-                          <div className="p-4 border-b border-gray-800 bg-gray-900/50">
+                        <div className="p-4 border-b border-gray-800 bg-gray-900/50">
                             <h3 className="text-xs font-black text-white uppercase tracking-wider">💰 Laporan Iuran Pemain</h3>
                             <p className="text-[9px] text-gray-500 mt-1">Klik LUNAS untuk otomatis sync ke Kas Mutasi.</p>
-                          </div>
-                          <div className="overflow-x-auto p-2">
-                              <table className="w-full text-left text-[10px]">
-                                  <thead>
-                                      <tr className="text-gray-400 border-b border-gray-800">
-                                          <th className="p-2 font-bold min-w-[150px]">Nama & Detail</th>
-                                          <th className="p-2 font-bold text-center">Juni 2026</th>
-                                          <th className="p-2 font-bold text-center">Juli 2026</th>
-                                      </tr>
-                                  </thead>
-                                  <tbody>
-                                      {players.map(p => (
-                                          <tr key={p.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                                              <td className="p-2">
-                                                  <div className="flex justify-between items-start">
-                                                      <div>
-                                                          <p className="font-bold text-white text-xs flex items-center flex-wrap gap-1">
-                                                              {p.name}
-                                                              {p.role === 'admin' && <span className="bg-emerald-600 text-white text-[8px] px-1.5 py-0.5 rounded uppercase font-black tracking-wider">Admin</span>}
-                                                          </p>
-                                                          <p className="text-[9px] text-gray-400 mt-0.5">WA: {p.whatsapp || '-'}</p>
-                                                          <p className="text-emerald-400 font-medium mt-0.5">Rp {p.fee.toLocaleString('id-ID')} {p.type === 'monthly' ? '' : '(Harian)'}</p>
-                                                      </div>
-                                                      <button onClick={() => handleEditClick(p)} className="p-1 bg-gray-800 text-gray-400 hover:text-emerald-400 rounded transition" title="Edit Anggota">✏️</button>
-                                                  </div>
-                                                  {p.type === 'per_play' && (
+                        </div>
+                        <div className="overflow-x-auto p-2">
+                            <table className="w-full text-left text-[10px]">
+                                <thead>
+                                    <tr className="text-gray-400 border-b border-gray-800">
+                                        <th className="p-2 font-bold min-w-[150px]">Nama & Detail</th>
+                                        <th className="p-2 font-bold text-center">Juni 2026</th>
+                                        <th className="p-2 font-bold text-center">Juli 2026</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {players.map(p => (
+                                        <tr key={p.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                                            <td className="p-2">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="font-bold text-white text-xs flex items-center flex-wrap gap-1">
+                                                            {p.name}
+                                                            {p.role === 'admin' && <span className="bg-emerald-600 text-white text-[8px] px-1.5 py-0.5 rounded uppercase font-black tracking-wider">Admin</span>}
+                                                        </p>
+                                                        <p className="text-[9px] text-gray-400 mt-0.5">WA: {p.whatsapp || '-'}</p>
+                                                        <p className="text-emerald-400 font-medium mt-0.5">Rp {p.fee.toLocaleString('id-ID')} {p.type === 'monthly' ? '' : '(Harian)'}</p>
+                                                    </div>
+                                                    <button onClick={() => handleEditClick(p)} className="p-1 bg-gray-800 text-gray-400 hover:text-emerald-400 rounded transition" title="Edit Anggota">✏️</button>
+                                                </div>
+                                                {p.type === 'per_play' && (
                                                     <button onClick={() => payPerPlay(p.id)} className="mt-2 w-full py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-white font-bold block">Catat Harian +</button>
-                                                  )}
-                                              </td>
-                                              <td className="p-2 text-center align-top pt-3">
-                                                  {p.type === 'monthly' ? (
-                                                      <button onClick={() => togglePayment(p.id, '2026-06')} className={`px-2 py-1 rounded text-xs font-bold w-full max-w-[70px] ${p.payments?.["2026-06"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
-                                                          {p.payments?.["2026-06"] ? 'LUNAS ✅' : 'BELUM ❌'}
-                                                      </button>
-                                                  ) : <span className="text-gray-600">-</span>}
-                                              </td>
-                                              <td className="p-2 text-center align-top pt-3">
-                                                  {p.type === 'monthly' ? (
-                                                      <button onClick={() => togglePayment(p.id, '2026-07')} className={`px-2 py-1 rounded text-xs font-bold w-full max-w-[70px] ${p.payments?.["2026-07"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
-                                                          {p.payments?.["2026-07"] ? 'LUNAS ✅' : 'BELUM ❌'}
-                                                      </button>
-                                                  ) : <span className="text-gray-600">-</span>}
-                                              </td>
-                                          </tr>
-                                      ))}
-                                  </tbody>
-                              </table>
-                          </div>
+                                                )}
+                                            </td>
+                                            <td className="p-2 text-center align-top pt-3">
+                                                {p.type === 'monthly' ? (
+                                                    <button onClick={() => togglePayment(p.id, '2026-06')} className={`px-2 py-1 rounded text-xs font-bold w-full max-w-[70px] ${p.payments?.["2026-06"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
+                                                        {p.payments?.["2026-06"] ? 'LUNAS ✅' : 'BELUM ❌'}
+                                                    </button>
+                                                ) : <span className="text-gray-600">-</span>}
+                                            </td>
+                                            <td className="p-2 text-center align-top pt-3">
+                                                {p.type === 'monthly' ? (
+                                                    <button onClick={() => togglePayment(p.id, '2026-07')} className={`px-2 py-1 rounded text-xs font-bold w-full max-w-[70px] ${p.payments?.["2026-07"] ? 'bg-emerald-900/50 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
+                                                        {p.payments?.["2026-07"] ? 'LUNAS ✅' : 'BELUM ❌'}
+                                                    </button>
+                                                ) : <span className="text-gray-600">-</span>}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                         </div>
 
                         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-4 shadow-xl">
-                          <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">📊 Statistik Match (M/K)</h3>
-                          <table className="w-full text-left text-[11px]">
-                              <thead>
+                        <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">📊 Statistik Match (M/K)</h3>
+                        <table className="w-full text-left text-[11px]">
+                            <thead>
                                 <tr className="bg-gray-950 text-gray-400 border-b border-gray-800">
-                                  <th className="p-2">Pemain</th><th className="p-2 text-center">Main</th>
-                                  <th className="p-2 text-center text-emerald-400">M</th><th className="p-2 text-center text-red-400">K</th>
+                                <th className="p-2">Pemain</th><th className="p-2 text-center">Main</th>
+                                <th className="p-2 text-center text-emerald-400">M</th><th className="p-2 text-center text-red-400">K</th>
                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-800/60">
+                            </thead>
+                            <tbody className="divide-y divide-gray-800/60">
                                 {players.sort((a,b) => (b.stats?.won || 0) - (a.stats?.won || 0)).map(p => (
-                                  <tr key={p.id}>
+                                <tr key={p.id}>
                                     <td className="p-2 font-bold text-white">{p.name}</td>
                                     <td className="p-2 text-center font-mono">{p.stats?.played || 0}</td>
                                     <td className="p-2 text-center font-mono text-emerald-400 font-bold">{p.stats?.won || 0}</td>
                                     <td className="p-2 text-center font-mono text-red-400">{p.stats?.lost || 0}</td>
-                                  </tr>
+                                </tr>
                                 ))}
-                              </tbody>
+                            </tbody>
                             </table>
                         </div>
                     </div>
@@ -757,7 +703,7 @@
                 {activeTab === 'matchmaker' && (
                   <div className="flex flex-col md:flex-row gap-6 items-start">
                     
-                    {/* KIRI: SCOREBOARD */}
+                    {/* KIRI: Papan Skor */}
                     <div className="w-full md:w-1/2 bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl md:sticky md:top-24">
                         <h3 className="text-sm font-black text-emerald-400 mb-4 text-center uppercase tracking-widest border-b border-gray-800 pb-3">🔥 Skor Match (Best of 3)</h3>
                         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -777,22 +723,22 @@
                             {[0, 1, 2].map((idx) => (
                                 <div key={idx} className="bg-gray-950 p-3 rounded-xl border border-gray-800 flex items-center justify-between">
                                     <div className="flex flex-col items-center gap-1 w-1/3">
-                                        <div className="flex gap-1 w-full"><button onClick={()=>updateScore(idx,'a',-1)} className="flex-1 bg-gray-800 text-xs py-1">-</button><button onClick={()=>updateScore(idx,'a',1)} className="flex-1 bg-indigo-900 text-xs py-1">+</button></div>
+                                        <div className="flex gap-1 w-full"><button onClick={()=>updateScore(idx,'a',-1)} className="flex-1 bg-gray-800 text-xs py-1 hover:bg-gray-700">-</button><button onClick={()=>updateScore(idx,'a',1)} className="flex-1 bg-indigo-900 text-xs py-1 hover:bg-indigo-800">+</button></div>
                                         <span className="text-xl font-black text-indigo-400">{sets[idx].a}</span>
                                     </div>
                                     <div className="text-[10px] text-gray-500 font-black uppercase text-center w-1/3">Set {idx+1}</div>
                                     <div className="flex flex-col items-center gap-1 w-1/3">
-                                        <div className="flex gap-1 w-full"><button onClick={()=>updateScore(idx,'b',-1)} className="flex-1 bg-gray-800 text-xs py-1">-</button><button onClick={()=>updateScore(idx,'b',1)} className="flex-1 bg-red-900 text-xs py-1">+</button></div>
+                                        <div className="flex gap-1 w-full"><button onClick={()=>updateScore(idx,'b',-1)} className="flex-1 bg-gray-800 text-xs py-1 hover:bg-gray-700">-</button><button onClick={()=>updateScore(idx,'b',1)} className="flex-1 bg-red-900 text-xs py-1 hover:bg-red-800">+</button></div>
                                         <span className="text-xl font-black text-red-400">{sets[idx].b}</span>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <button onClick={handleSaveMatch} className="w-full mt-4 py-3 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl">💾 Simpan Hasil & Update Stats Pemain</button>
+                        <button onClick={handleSaveMatch} className="w-full mt-4 py-3 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl hover:bg-emerald-400">💾 Simpan Hasil & Update Stats Pemain</button>
                     </div>
 
-                    {/* KANAN: MATCH HISTORY */}
-                    <div className="w-full md:w-1/2 bg-gray-900 border border-gray-800 p-4 rounded-3xl shadow-xl">
+                    {/* KANAN: Histori Match */}
+                    <div className="w-full md:w-1/2 bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
                         <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">📋 Histori Match</h3>
                         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                             {matches.length === 0 ? <p className="text-[10px] text-gray-500 text-center italic">Belum ada data match.</p> : null}
@@ -852,11 +798,11 @@
                             </div>
                             
                             <div className="flex gap-2 pt-2">
-                                <button type="submit" className={`flex-1 py-3 font-black text-xs rounded-xl ${editTxId ? 'bg-yellow-500 text-gray-950' : 'bg-emerald-500 text-gray-950'}`}>
+                                <button type="submit" className={`flex-1 py-3 font-black text-xs rounded-xl transition ${editTxId ? 'bg-yellow-500 text-gray-950 hover:bg-yellow-400' : 'bg-emerald-500 text-gray-950 hover:bg-emerald-400'}`}>
                                     {editTxId ? "Update Data 💾" : "Simpan Transaksi 💾"}
                                 </button>
                                 {editTxId && (
-                                    <button type="button" onClick={() => { setEditTxId(null); setTxAmount(''); setTxDesc(''); setTxCategory('iuran'); setTxType('credit'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-black rounded-xl">
+                                    <button type="button" onClick={() => { setEditTxId(null); setTxAmount(''); setTxDesc(''); setTxCategory('iuran'); setTxType('credit'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-black rounded-xl transition">
                                         Batal Edit
                                     </button>
                                 )}
