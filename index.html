@@ -22,7 +22,7 @@
         const { useState, useEffect, useRef } = React;
 
         const DEFAULT_APP_ID = 'badminton-selasa-ceria-v2';
-        const LOCAL_STORAGE_KEY = 'badminton_selasa_ceriadata_v24'; // Bump v24 untuk fitur Absen Beruntun
+        const LOCAL_STORAGE_KEY = 'badminton_selasa_ceriadata_v25'; // Bump v25 untuk memecah transaksi gabungan Juni menjadi individu
         
         const FALLBACK_FIREBASE_CONFIG = {
           apiKey: "AIzaSyAKWV_5Y9gWh7_Mp33YeTYS-v0kGGO0K0s",
@@ -60,8 +60,14 @@
           { "id": "p15", "name": "Haposan87", "whatsapp": "+62 895-4102-69007", "role": "admin", "type": "monthly", "fee": 0, "payments": {"2026-06": false, "2026-07": false}, "stats": { "played": 0, "won": 0, "lost": 0 } }
         ];
 
+        // --- TRANSAKSI DIPISAH AGAR BISA DIBACA SISTEM PER PEMAIN ---
         const INITIAL_TRANSACTIONS = [
-          { "id": "t1", "type": "credit", "category": "iuran", "amount": 550000, "description": "Iuran bulan Juni 2026", "date": "2026-06-08", "note": "Manual - Kas Masuk", "hasReceipt": false },
+          { "id": "t1_p1", "type": "credit", "category": "iuran", "amount": 100000, "description": "Iuran Bulanan (Juni 2026) - Pak dr. Husni Lubis", "date": "2026-06-08", "note": "Auto-Sync Roster", "hasReceipt": false, "playerId": "p1", "month": "2026-06" },
+          { "id": "t1_p2", "type": "credit", "category": "iuran", "amount": 100000, "description": "Iuran Bulanan (Juni 2026) - Lae Agustin Tampubolon", "date": "2026-06-08", "note": "Auto-Sync Roster", "hasReceipt": false, "playerId": "p2", "month": "2026-06" },
+          { "id": "t1_p3", "type": "credit", "category": "iuran", "amount": 150000, "description": "Iuran Bulanan (Juni 2026) - Lae Handi", "date": "2026-06-08", "note": "Auto-Sync Roster", "hasReceipt": false, "playerId": "p3", "month": "2026-06" },
+          { "id": "t1_p4", "type": "credit", "category": "iuran", "amount": 100000, "description": "Iuran Bulanan (Juni 2026) - Lae Juntak", "date": "2026-06-08", "note": "Auto-Sync Roster", "hasReceipt": false, "playerId": "p4", "month": "2026-06" },
+          { "id": "t1_p5", "type": "credit", "category": "iuran", "amount": 50000, "description": "Iuran Bulanan (Juni 2026) - Lae Pakpahan", "date": "2026-06-08", "note": "Auto-Sync Roster", "hasReceipt": false, "playerId": "p5", "month": "2026-06" },
+          { "id": "t1_p6", "type": "credit", "category": "iuran", "amount": 50000, "description": "Iuran Bulanan (Juni 2026) - Uda", "date": "2026-06-08", "note": "Auto-Sync Roster", "hasReceipt": false, "playerId": "p6", "month": "2026-06" },
           { "id": "t2", "type": "debit", "category": "sewa", "amount": 400000, "description": "Bayar sewa lapangan bulan Juni 2026", "date": "2026-06-08", "note": "Slip Transfer", "hasReceipt": true },
           { "id": "t3", "type": "debit", "category": "shuttlecock", "amount": 260000, "description": "Beli bola 2 tabung, merk AW", "date": "2026-06-08", "note": "Kuitansi Fisik", "hasReceipt": true }
         ];
@@ -71,7 +77,6 @@
           { "id": "s1", "date": todayStr, "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "time": "19:00 - 21:00", "isClosed": false, "rsvps": {} }
         ];
 
-        // --- HISTORI SIMULASI (Diurutkan dari terbaru ke terlama) ---
         const INITIAL_SESSION_HISTORY = [
           { "id": "s_hist_2", "date": "2026-06-23", "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "isClosed": true, "attendees": ["p3", "p2", "p11", "p12", "p14"] },
           { "id": "s_hist_1", "date": "2026-06-16", "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "isClosed": true, "attendees": ["p3", "p2", "p4", "p1", "p11"] }
@@ -244,22 +249,18 @@
              showToast("Sesi Ditutup! Histori tersimpan & Jadwal baru dibuat 🗓️", "success");
           };
 
-          // --- LOGIKA MENGHITUNG STREAK ABSEN BERUNTUN (FITUR BARU) ---
           const getAbsentStreak = (playerId) => {
               let streak = 0;
-              // Urutkan histori dari yang terbaru (descending)
               const sortedHistory = [...sessionHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
               
               for (let i = 0; i < sortedHistory.length; i++) {
                   const hs = sortedHistory[i];
                   if (hs.attendees) {
-                      // Support pencarian berdasarkan ID maupun legacy name
                       const isPresent = hs.attendees.includes(playerId) || hs.attendees.includes(players.find(p => p.id === playerId)?.name);
-                      
                       if (isPresent) {
-                          break; // Begitu ketemu dia hadir, perhitungan streak putus
+                          break; 
                       } else {
-                          streak++; // Jika tidak hadir, tambah jumlah absen
+                          streak++; 
                       }
                   }
               }
@@ -514,7 +515,10 @@
                   <div>
                     <h1 className="text-base font-black text-emerald-400">Badminton Selasa Ceria</h1>
                     <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
-                      Room: <span className="text-emerald-500 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest border border-emerald-500/20">{workspaceUrl || 'DEFAULT_ROOM'}</span>
+                      Room: 
+                      <span className="text-emerald-500 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest border border-emerald-500/20">
+                        {workspaceUrl || 'DEFAULT_ROOM'}
+                      </span>
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -539,6 +543,8 @@
                 {/* 1. TAB RSVP & STATISTIK */}
                 {activeTab === 'dashboard' && (
                   <div className="flex flex-col lg:flex-row gap-6 items-start">
+                    
+                    {/* KIRI: JADWAL & ABSENSI */}
                     <div className="w-full lg:w-2/3 space-y-4">
                         {sessions.map(s => {
                         const hadirCount = Object.values(s.rsvps || {}).filter(status => status === 'YES').length;
@@ -574,7 +580,7 @@
                             <h4 className="text-[10px] font-bold uppercase text-gray-500 mb-2">Kehadiran (Absensi):</h4>
                             {players.map(p => {
                                 const status = s.rsvps?.[p.id] || 'NO_RESPONSE';
-                                const absentStreak = getAbsentStreak(p.id); // AMBIL STREAK ABSEN
+                                const absentStreak = getAbsentStreak(p.id);
 
                                 return (
                                 <div key={p.id} className="flex justify-between items-center p-2 rounded-xl bg-gray-950/40 border border-gray-800">
@@ -613,7 +619,7 @@
                         )
                         })}
 
-                        {/* HISTORY LOG (Bawah Kiri) */}
+                        {/* HISTORY LOG */}
                         {sessionHistory.length > 0 && (
                             <div className="pt-4">
                                 <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">📜 Histori Kehadiran Sesi</h3>
@@ -647,7 +653,7 @@
                             </h3>
                             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
                                 {getAttendanceStats().map((stat, idx) => {
-                                    if(stat.count === 0) return null;
+                                    if(stat.count === 0) return null; // Sembunyikan yang belum pernah hadir
                                     return (
                                         <div key={stat.id} className="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
                                             <div className="flex items-center gap-3">
@@ -827,7 +833,7 @@
                                 </div>
                             ))}
                         </div>
-                        <button onClick={handleSaveMatch} className="w-full mt-4 py-3 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl hover:bg-emerald-400 transition">💾 Simpan Hasil & Update Stats</button>
+                        <button onClick={handleSaveMatch} className="w-full mt-4 py-3 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl hover:bg-emerald-400 transition">💾 Simpan Hasil & Update Stats Pemain</button>
                     </div>
 
                     <div className="w-full md:w-1/2 bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
