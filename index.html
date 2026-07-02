@@ -22,7 +22,7 @@
         const { useState, useEffect, useRef } = React;
 
         const DEFAULT_APP_ID = 'badminton-selasa-ceria-v2';
-        const LOCAL_STORAGE_KEY = 'badminton_selasa_ceriadata_v21'; // Bump ke v21 untuk update sinkronisasi saldo total pemain
+        const LOCAL_STORAGE_KEY = 'badminton_selasa_ceriadata_v24'; // Bump v24 untuk fitur Absen Beruntun
         
         const FALLBACK_FIREBASE_CONFIG = {
           apiKey: "AIzaSyAKWV_5Y9gWh7_Mp33YeTYS-v0kGGO0K0s",
@@ -71,26 +71,10 @@
           { "id": "s1", "date": todayStr, "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "time": "19:00 - 21:00", "isClosed": false, "rsvps": {} }
         ];
 
-        // --- DATA SIMULASI HISTORI ---
+        // --- HISTORI SIMULASI (Diurutkan dari terbaru ke terlama) ---
         const INITIAL_SESSION_HISTORY = [
-          {
-            "id": "s_hist_1",
-            "date": "2026-06-16",
-            "day": "Selasa",
-            "location": "Sport Hill Arena, Batam",
-            "court": "Court 10",
-            "isClosed": true,
-            "attendees": ["Lae Handi", "Lae Agustin Tampubolon", "Lae Juntak", "Pak dr. Husni Lubis", "Jispen Siahaan"]
-          },
-          {
-            "id": "s_hist_2",
-            "date": "2026-06-23",
-            "day": "Selasa",
-            "location": "Sport Hill Arena, Batam",
-            "court": "Court 10",
-            "isClosed": true,
-            "attendees": ["Lae Handi", "Lae Agustin Tampubolon", "Jispen Siahaan", "Eding Sembiring", "Alex Sibarani"]
-          }
+          { "id": "s_hist_2", "date": "2026-06-23", "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "isClosed": true, "attendees": ["p3", "p2", "p11", "p12", "p14"] },
+          { "id": "s_hist_1", "date": "2026-06-16", "day": "Selasa", "location": "Sport Hill Arena, Batam", "court": "Court 10", "isClosed": true, "attendees": ["p3", "p2", "p4", "p1", "p11"] }
         ];
 
         const INITIAL_TACTICAL = [
@@ -131,8 +115,8 @@
           // State Kas & Edit Kas
           const [editTxId, setEditTxId] = useState(null);
           const [txCategory, setTxCategory] = useState('iuran'); const [txType, setTxType] = useState('credit');
-          const [txPlayerId, setTxPlayerId] = useState(''); // Tracking untuk ID Pemain saat bayar Iuran
-          const [txMonth, setTxMonth] = useState('2026-06'); // Tracking untuk Bulan Pembayaran Iuran
+          const [txPlayerId, setTxPlayerId] = useState(''); 
+          const [txMonth, setTxMonth] = useState('2026-06'); 
           const [txAmount, setTxAmount] = useState(''); const [txDesc, setTxDesc] = useState('');
           const [txMethod, setTxMethod] = useState('manual'); const [receiptName, setReceiptName] = useState('');
 
@@ -149,6 +133,13 @@
           const showToast = (message, type = 'info') => {
             setNotification({ message, type });
             setTimeout(() => setNotification(null), 3500);
+          };
+
+          const getWaLink = (wa) => {
+              if (!wa || wa === '-') return '#';
+              let clean = wa.replace(/\D/g, ''); 
+              if (clean.startsWith('0')) clean = '62' + clean.substring(1); 
+              return `https://wa.me/${clean}`;
           };
 
           const persistData = (updatedFields) => {
@@ -208,7 +199,6 @@
             });
           };
 
-          // Handler Kehadiran & Sesi
           const handleRsvpChange = (sessionId, playerId, status) => {
             const session = sessions.find(s => s.id === sessionId);
             if (session && session.isClosed) { showToast("Sesi sudah ditutup!", "error"); return; }
@@ -225,8 +215,8 @@
              const session = sessions.find(s => s.id === sessionId);
              if(!session) return;
              
-             const attendees = Object.keys(session.rsvps).filter(uid => session.rsvps[uid] === 'YES').map(uid => players.find(p=>p.id===uid)?.name).filter(Boolean);
-             const historyLog = { ...session, isClosed: true, attendees };
+             const attendeesIds = Object.keys(session.rsvps).filter(uid => session.rsvps[uid] === 'YES');
+             const historyLog = { ...session, isClosed: true, attendees: attendeesIds };
              const newHistory = [historyLog, ...sessionHistory];
              
              let nextDateStr = "";
@@ -254,13 +244,34 @@
              showToast("Sesi Ditutup! Histori tersimpan & Jadwal baru dibuat 🗓️", "success");
           };
 
-          // LOGIKA STATISTIK KEHADIRAN
+          // --- LOGIKA MENGHITUNG STREAK ABSEN BERUNTUN (FITUR BARU) ---
+          const getAbsentStreak = (playerId) => {
+              let streak = 0;
+              // Urutkan histori dari yang terbaru (descending)
+              const sortedHistory = [...sessionHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+              
+              for (let i = 0; i < sortedHistory.length; i++) {
+                  const hs = sortedHistory[i];
+                  if (hs.attendees) {
+                      // Support pencarian berdasarkan ID maupun legacy name
+                      const isPresent = hs.attendees.includes(playerId) || hs.attendees.includes(players.find(p => p.id === playerId)?.name);
+                      
+                      if (isPresent) {
+                          break; // Begitu ketemu dia hadir, perhitungan streak putus
+                      } else {
+                          streak++; // Jika tidak hadir, tambah jumlah absen
+                      }
+                  }
+              }
+              return streak;
+          };
+
           const getAttendanceStats = () => {
               let stats = players.map(p => ({ id: p.id, name: p.name, count: 0 }));
               sessionHistory.forEach(hs => {
                   if (hs.attendees) {
-                      hs.attendees.forEach(attName => {
-                          const pStat = stats.find(s => s.name === attName);
+                      hs.attendees.forEach(att => {
+                          const pStat = stats.find(s => s.id === att || s.name === att);
                           if (pStat) pStat.count += 1;
                       });
                   }
@@ -268,7 +279,6 @@
               return stats.sort((a, b) => b.count - a.count);
           };
 
-          // Handler Edit Form Anggota
           const handleEditClick = (p) => {
              setEditPlayerId(p.id); setPName(p.name); setPWa(p.whatsapp || ''); setPRole(p.role); setPType(p.type); setPFee(p.fee.toString());
              window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -296,7 +306,6 @@
             }
           };
 
-          // AUTO-SYNC DARI TAB ANGGOTA -> KE KAS
           const togglePayment = (playerId, monthKey) => {
              const player = players.find(p => p.id === playerId);
              const isPaid = player.payments?.[monthKey];
@@ -335,7 +344,6 @@
              const updatedTransactions = [newTx, ...transactions]; setTransactions(updatedTransactions); persistData({ transactions: updatedTransactions }); showToast(`Iuran Harian Rp ${player.fee.toLocaleString('id-ID')} masuk ke Kas ✅`, "success");
           };
 
-          // --- HANDLER TRANSAKSI KAS (SYNC KE TAB ANGGOTA) ---
           const handleTxCategoryChange = (e) => {
               const val = e.target.value; setTxCategory(val);
               if (val === 'iuran') { setTxType('credit'); } 
@@ -374,7 +382,6 @@
             let currentPlayers = players;
 
             if (editTxId) {
-                // UPDATE KAS MODE
                 if (txCategory === 'iuran' && txPlayerId && txMonth) {
                     currentPlayers = players.map(p => {
                         if (p.id === txPlayerId) return { ...p, payments: { ...(p.payments || {}), [txMonth]: true } };
@@ -395,7 +402,6 @@
                 showToast("Data Kas Diperbarui! ✏️", "success");
                 setEditTxId(null);
             } else {
-                // TAMBAH KAS BARU + SYNC STATUS ANGGOTA JADI LUNAS
                 if (txCategory === 'iuran' && txPlayerId) {
                     currentPlayers = players.map(p => {
                         if (p.id === txPlayerId) return { ...p, payments: { ...(p.payments || {}), [txMonth]: true } };
@@ -456,8 +462,8 @@
 
               const newMatchLog = {
                   id: 'm_' + Date.now(), date: new Date().toLocaleString('id-ID'),
-                  teamA: teamA.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
-                  teamB: teamB.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
+                  teamAIds: teamA.filter(Boolean),
+                  teamBIds: teamB.filter(Boolean),
                   sets: [...sets], winner: isTeamAWinner ? 'A' : (winsB > winsA ? 'B' : 'Draw')
               };
 
@@ -503,16 +509,12 @@
                 </div>
               )}
 
-              {/* HEADER RESPONSIVE DENGAN max-w-6xl UNTUK PC */}
               <header className="border-b border-gray-800 bg-gray-900/60 backdrop-blur-xl sticky top-0 z-40 px-4">
                 <div className="max-w-md md:max-w-4xl lg:max-w-6xl mx-auto h-16 flex items-center justify-between">
                   <div>
                     <h1 className="text-base font-black text-emerald-400">Badminton Selasa Ceria</h1>
                     <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
-                      Room: 
-                      <span className="text-emerald-500 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest border border-emerald-500/20">
-                        {workspaceUrl || 'DEFAULT_ROOM'}
-                      </span>
+                      Room: <span className="text-emerald-500 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest border border-emerald-500/20">{workspaceUrl || 'DEFAULT_ROOM'}</span>
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -522,10 +524,9 @@
                 </div>
               </header>
 
-              {/* NAVIGASI RESPONSIVE */}
               <nav className="max-w-md md:max-w-4xl lg:max-w-6xl mx-auto px-4 my-4 overflow-x-auto no-scrollbar">
                 <div className="bg-gray-900 p-1 rounded-2xl flex gap-1 min-w-max lg:justify-center">
-                  <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'dashboard' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>🗓️ Jadwal & Statistik</button>
+                  <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'dashboard' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>🗓️ Jadwal</button>
                   <button onClick={() => setActiveTab('players')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'players' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>👥 Anggota</button>
                   <button onClick={() => setActiveTab('matchmaker')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'matchmaker' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>🔥 Match</button>
                   <button onClick={() => setActiveTab('ledger')} className={`px-4 py-2 rounded-xl text-[10px] font-bold transition ${activeTab === 'ledger' ? 'bg-emerald-500 text-gray-950' : 'text-gray-400'}`}>💰 Kas</button>
@@ -533,14 +534,11 @@
                 </div>
               </nav>
 
-              {/* MAIN CONTENT AREA */}
               <main className="max-w-md md:max-w-4xl lg:max-w-6xl mx-auto px-4">
                 
                 {/* 1. TAB RSVP & STATISTIK */}
                 {activeTab === 'dashboard' && (
                   <div className="flex flex-col lg:flex-row gap-6 items-start">
-                    
-                    {/* KIRI: JADWAL & ABSENSI */}
                     <div className="w-full lg:w-2/3 space-y-4">
                         {sessions.map(s => {
                         const hadirCount = Object.values(s.rsvps || {}).filter(status => status === 'YES').length;
@@ -576,13 +574,32 @@
                             <h4 className="text-[10px] font-bold uppercase text-gray-500 mb-2">Kehadiran (Absensi):</h4>
                             {players.map(p => {
                                 const status = s.rsvps?.[p.id] || 'NO_RESPONSE';
+                                const absentStreak = getAbsentStreak(p.id); // AMBIL STREAK ABSEN
+
                                 return (
                                 <div key={p.id} className="flex justify-between items-center p-2 rounded-xl bg-gray-950/40 border border-gray-800">
-                                    <span className="text-xs font-bold text-white w-24 md:w-40 truncate">{p.name}</span>
-                                    <div className="flex gap-1">
-                                    <button onClick={() => handleRsvpChange(s.id, p.id, 'YES')} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'YES' ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ikut</button>
-                                    <button onClick={() => handleRsvpChange(s.id, p.id, 'MAYBE')} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'MAYBE' ? 'bg-yellow-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ragu</button>
-                                    <button onClick={() => handleRsvpChange(s.id, p.id, 'NO')} className={`px-2 py-1 text-[10px] font-bold rounded-lg ${status === 'NO' ? 'bg-red-500 text-white' : 'bg-gray-800 text-gray-400'}`}>Absen</button>
+                                    <div className="flex-1 min-w-0 pr-2">
+                                        <p className="text-xs font-bold text-white truncate flex items-center flex-wrap gap-1">
+                                            {p.name}
+                                            {absentStreak > 0 && (
+                                                <span className="text-red-400 font-normal text-[8px] italic">({absentStreak}x berturut-turut absen)</span>
+                                            )}
+                                        </p>
+                                        {p.whatsapp && p.whatsapp !== '-' ? (
+                                            <a href={getWaLink(p.whatsapp)} target="_blank" rel="noreferrer" className="inline-block mt-1">
+                                                <span className="text-[9px] font-bold text-emerald-400 bg-emerald-900/40 border border-emerald-800/50 px-1.5 py-0.5 rounded flex items-center gap-1 w-max hover:bg-emerald-800/60 transition">
+                                                    💬 {p.whatsapp}
+                                                </span>
+                                            </a>
+                                        ) : (
+                                            <p className="text-[9px] text-gray-600 mt-1">Tidak ada WA</p>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-1 shrink-0">
+                                        <button onClick={() => handleRsvpChange(s.id, p.id, 'YES')} className={`px-2 py-1.5 text-[10px] font-bold rounded-lg ${status === 'YES' ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ikut</button>
+                                        <button onClick={() => handleRsvpChange(s.id, p.id, 'MAYBE')} className={`px-2 py-1.5 text-[10px] font-bold rounded-lg ${status === 'MAYBE' ? 'bg-yellow-500 text-gray-950' : 'bg-gray-800 text-gray-400'}`}>Ragu</button>
+                                        <button onClick={() => handleRsvpChange(s.id, p.id, 'NO')} className={`px-2 py-1.5 text-[10px] font-bold rounded-lg ${status === 'NO' ? 'bg-red-500 text-white' : 'bg-gray-800 text-gray-400'}`}>Absen</button>
                                     </div>
                                 </div>
                                 );
@@ -608,7 +625,11 @@
                                                 <span className="text-[9px] text-gray-400">{hs.location}</span>
                                             </div>
                                             <p className="text-[10px] text-gray-300 leading-relaxed">
-                                                <span className="font-bold text-white">Hadir ({hs.attendees?.length || 0}):</span> {hs.attendees?.join(', ') || '-'}
+                                                <span className="font-bold text-white">Hadir ({hs.attendees?.length || 0}):</span>{' '}
+                                                {hs.attendees?.map(att => {
+                                                    const pl = players.find(p => p.id === att || p.name === att);
+                                                    return pl ? pl.name : att;
+                                                }).join(', ') || '-'}
                                             </p>
                                         </div>
                                     ))}
@@ -617,7 +638,7 @@
                         )}
                     </div>
 
-                    {/* BAGIAN KANAN: STATISTIK KEHADIRAN (HANYA DARI HISTORI) */}
+                    {/* KANAN: STATISTIK KEHADIRAN */}
                     <div className="w-full lg:w-1/3 space-y-4 lg:sticky lg:top-24">
                         <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
                             <h3 className="text-xs font-black text-emerald-400 mb-4 uppercase tracking-wider flex items-center justify-between">
@@ -626,7 +647,7 @@
                             </h3>
                             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
                                 {getAttendanceStats().map((stat, idx) => {
-                                    if(stat.count === 0) return null; // Sembunyikan yang belum pernah hadir
+                                    if(stat.count === 0) return null;
                                     return (
                                         <div key={stat.id} className="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
                                             <div className="flex items-center gap-3">
@@ -646,11 +667,10 @@
                   </div>
                 )}
 
-                {/* 2. TAB ANGGOTA, IURAN & STATISTIK (DENGAN SALDO TOTAL) */}
+                {/* 2. TAB ANGGOTA, IURAN & STATISTIK */}
                 {activeTab === 'players' && (
                   <div className="flex flex-col md:flex-row gap-6 items-start">
                     
-                    {/* KIRI: FORM EDIT */}
                     <div className="w-full md:w-1/3 bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-xl md:sticky md:top-24">
                         <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3">
                             {editPlayerId ? "✏️ Edit Anggota" : "➕ Tambah Anggota"}
@@ -677,7 +697,6 @@
                         </form>
                     </div>
 
-                    {/* KANAN: LIST ANGGOTA */}
                     <div className="w-full md:w-2/3 space-y-4">
                         <div className="bg-gray-900 border border-gray-800 rounded-3xl shadow-xl overflow-hidden">
                         <div className="p-4 border-b border-gray-800 bg-gray-900/50">
@@ -696,7 +715,6 @@
                                 </thead>
                                 <tbody>
                                     {players.map(p => {
-                                        // HITUNG TOTAL UANG KAS YANG TELAH DIBAYAR PEMAIN INI
                                         const totalDibayar = transactions
                                             .filter(t => t.type === 'credit' && t.category === 'iuran' && (t.playerId === p.id || t.description.includes(p.name)))
                                             .reduce((sum, t) => sum + t.amount, 0);
@@ -779,7 +797,6 @@
                 {activeTab === 'matchmaker' && (
                   <div className="flex flex-col md:flex-row gap-6 items-start">
                     
-                    {/* KIRI: Papan Skor */}
                     <div className="w-full md:w-1/2 bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl md:sticky md:top-24">
                         <h3 className="text-sm font-black text-emerald-400 mb-4 text-center uppercase tracking-widest border-b border-gray-800 pb-3">🔥 Skor Match (Best of 3)</h3>
                         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -813,7 +830,6 @@
                         <button onClick={handleSaveMatch} className="w-full mt-4 py-3 bg-emerald-500 text-gray-950 font-black text-xs rounded-xl hover:bg-emerald-400 transition">💾 Simpan Hasil & Update Stats</button>
                     </div>
 
-                    {/* KANAN: Histori Match */}
                     <div className="w-full md:w-1/2 bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-xl">
                         <h3 className="text-xs font-black text-white mb-3 uppercase tracking-wider">📋 Histori Match</h3>
                         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
@@ -822,14 +838,18 @@
                                 <div key={m.id} className="bg-gray-950 p-4 rounded-2xl border border-gray-800">
                                     <div className="flex justify-between text-[9px] text-gray-500 border-b border-gray-800 pb-2 mb-3"><span>Match #{matches.length - i}</span><span>{m.date}</span></div>
                                     <div className="flex justify-between items-center">
-                                        <div className={`w-2/5 text-[10px] font-bold ${m.winner === 'A' ? 'text-indigo-400' : 'text-gray-400'}`}>{m.teamA.join(' & ')}</div>
+                                        <div className={`w-2/5 text-[10px] font-bold ${m.winner === 'A' ? 'text-indigo-400' : 'text-gray-400'}`}>
+                                            {m.teamAIds ? m.teamAIds.map(id => players.find(p=>p.id===id)?.name || id).join(' & ') : m.teamA.join(' & ')}
+                                        </div>
                                         <div className="w-1/5 text-center flex flex-col gap-1">
                                             {m.sets.map((s, idx) => {
                                                 if(s.a===0 && s.b===0) return null;
                                                 return <span key={idx} className="text-[10px] bg-gray-800 px-1.5 py-0.5 rounded font-mono">{s.a} - {s.b}</span>
                                             })}
                                         </div>
-                                        <div className={`w-2/5 text-right text-[10px] font-bold ${m.winner === 'B' ? 'text-red-400' : 'text-gray-400'}`}>{m.teamB.join(' & ')}</div>
+                                        <div className={`w-2/5 text-right text-[10px] font-bold ${m.winner === 'B' ? 'text-red-400' : 'text-gray-400'}`}>
+                                            {m.teamBIds ? m.teamBIds.map(id => players.find(p=>p.id===id)?.name || id).join(' & ') : m.teamB.join(' & ')}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -838,11 +858,10 @@
                   </div>
                 )}
 
-                {/* 4. TAB KEUANGAN (KAS - SYNC DENGAN IURAN PEMAIN) */}
+                {/* 4. TAB KEUANGAN */}
                 {activeTab === 'ledger' && (
                   <div className="flex flex-col md:flex-row gap-6 items-start">
                     
-                    {/* KIRI: SUMMARY & FORM MUTASI */}
                     <div className="w-full md:w-1/3 space-y-4 md:sticky md:top-24">
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 text-center shadow-lg">
@@ -867,7 +886,6 @@
                                 <option value="lainnya">📦 Lainnya</option>
                             </select>
 
-                            {/* FITUR BARU: PILIH PEMAIN & BULAN JIKA KATEGORI = IURAN */}
                             {txCategory === 'iuran' && !editTxId && (
                                 <div className="flex gap-2">
                                     <select value={txPlayerId} onChange={handlePlayerSelect} className="w-2/3 bg-gray-950 border border-gray-800 px-2 py-3 text-[10px] md:text-xs text-white rounded-xl">
@@ -905,7 +923,6 @@
                         </div>
                     </div>
 
-                    {/* KANAN: LIST DAFTAR TRANSAKSI (EDIT & HAPUS) */}
                     <div className="w-full md:w-2/3 space-y-3 max-h-[600px] overflow-y-auto pr-2">
                       {transactions.map(t => (
                         <div key={t.id} className="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex justify-between items-center shadow-lg hover:border-gray-700 transition">
@@ -930,7 +947,7 @@
                   </div>
                 )}
 
-                {/* 5. TAB TAKTIKAL (TETAP CENTER) */}
+                {/* 5. TAB TAKTIKAL */}
                 {activeTab === 'tactical' && (
                   <div className="bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-xl flex flex-col items-center justify-center max-w-lg mx-auto">
                     <h3 className="text-base font-bold text-white mb-2 w-full text-center">📋 Papan Strategi Court</h3>
